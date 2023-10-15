@@ -41,6 +41,9 @@ const OrdersSchema = new Schema({
         ref: 'Drivers',
         default: null
     },
+    paymentMethod: {
+        type: Schema.Types.String
+    },
     client: {
         type: Schema.Types.ObjectId,
         ref: 'Clients'
