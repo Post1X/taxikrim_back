@@ -8,6 +8,6 @@ const DriverStatusesSchema = new Schema({
     }
 })
 
-const DriversStatuses = mongoose.model('Drivers', DriverStatusesSchema);
+const DriversStatuses = mongoose.model('DriverStatuses', DriverStatusesSchema);
 
 export default DriversStatuses;

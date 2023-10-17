@@ -6,6 +6,7 @@ import Subscriptions from "../schemas/SubscribitionsSchema";
 import fetch from 'node-fetch';
 import Organisations from "../schemas/OrganisationsSchema";
 import Drivers from "../schemas/DriversSchema";
+import order from "../routes/order";
 
 const subscription = async (req, res, next) => {
     try {
@@ -38,8 +39,8 @@ const subscription = async (req, res, next) => {
                 return next();
             }
             if (orderForMonth) {
-                await Payments.findOneAndUpdate({seller_id: user_id}, {isNew: false, forYear: false});
-                const paymentStatus = await CheckPayment(orderForYear.order_id);
+                await Payments.findOneAndUpdate({seller_id: user_id}, {isNew: false, forMonth: false});
+                const paymentStatus = await CheckPayment(orderForMonth.order_id);
                 if (paymentStatus.paid !== true) {
                     return next();
                 }

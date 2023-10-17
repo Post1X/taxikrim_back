@@ -1,5 +1,5 @@
 import makeCall from "../utilities/call";
-import Drivers from "../schemas/DriverStatusesSchema";
+import Drivers from "../schemas/DriversSchema";
 import Clients from "../schemas/ClientsSchema";
 import jwt from "jsonwebtoken";
 
@@ -8,9 +8,8 @@ class DriversController {
         try {
             const {phone} = req.body;
             const client = await Drivers.findOne({
-                phone_number: phone
+                phone: phone
             });
-
             function generateRandomNumberString() {
                 let result = '';
                 for (let i = 0; i < 4; i++) {
@@ -20,7 +19,6 @@ class DriversController {
                 }
                 return result;
             }
-
             const code = generateRandomNumberString();
             await makeCall(phone, code)
             if (!client) {
@@ -32,14 +30,15 @@ class DriversController {
             }
             if (client) {
                 await Drivers.findOneAndUpdate({
-                    phone_number: phone
+                    phone: phone
                 }, {
                     code: code
                 })
             }
             ;
             res.status(200).json({
-                success: true
+                success: true,
+                code: code
             })
         } catch (e) {
             e.status = 401;
@@ -51,6 +50,7 @@ class DriversController {
         try {
             const JWT_SECRET = process.env.JWT_SECRET;
             const {phone, code} = req.body;
+            console.log(phone, code)
             const client = await Drivers.findOne({
                 phone
             });
@@ -102,6 +102,7 @@ class DriversController {
     static updateDriver = async (req, res, next) => {
         try {
             const {user_id} = req;
+            const regComplete = true;
             const {frontPassport,
                 backPassport,
                 phone,
@@ -134,7 +135,8 @@ class DriversController {
                 carBrandId,
                 carColor,
                 carModel,
-                tariffId
+                tariffId,
+                regComplete
             })
         }catch (e) {
             e.status = 401;

@@ -1,7 +1,7 @@
 import bodyParser from "express";
 import databaseConnections from "./services/database";
-import headersValidation from "./middlewares/headers";
 import router from "./routes";
+import cors from "cors";
 
 const createError = require('http-errors');
 const express = require('express');
@@ -10,9 +10,9 @@ const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 databaseConnections.connectToDatabase();
 const app = express();
-app.use(headersValidation);
 app.use(logger('dev'));
 app.use(express.json())
+app.use(cors())
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(cookieParser());

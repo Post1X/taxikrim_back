@@ -6,6 +6,9 @@ const DriversSchema = new Schema({
     avatar: {
         type: Schema.Types.String
     },
+    code: {
+        type: Schema.Types.String
+    },
     frontPassport: {
         type: Schema.Types.String
     },
@@ -60,6 +63,10 @@ const DriversSchema = new Schema({
         type: Schema.Types.Date
     },
     subscription_status: {
+        type: Schema.Types.Boolean,
+        default: false
+    },
+    regComplete: {
         type: Schema.Types.Boolean,
         default: false
     }

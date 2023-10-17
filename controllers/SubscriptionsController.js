@@ -24,7 +24,23 @@ class SubscriptionsController {
     //
     static getSubInfo = async (req, res, next) => {
         try {
-            const pricelists = await Pricelists.find({});
+            const {role} = req.query;
+            let filter;
+            if (role.isDispatcher)
+            {
+                filter = 'dipsatcher'
+            }
+            if (role.isDriver)
+            {
+                filter = 'driver'
+            }
+            if (role.isHybrid)
+            {
+                filter = 'hybrid';
+            }
+            const pricelists = await Pricelists.find({
+                filter
+            });
             res.status(200).json(pricelists);
         }catch (e) {
             e.status = 401;
@@ -36,21 +52,24 @@ class SubscriptionsController {
         try {
             const {dispatcher, driver} = req.query;
             const {user_id} = req;
-            const organisation = await Drivers.findOne({
-                _id: organizationId
-            })
             const url = 'https://api.yookassa.ru/v3/payments';
             const payment_method_id = await PaymentMethods.findOne({
                 user_id: user_id
             })
+            let subDetails;
+            if (dispatcher) {
+                subDetails = await Pricelists.findOne({
+                    type: 'dispatcher'
+                })
+            }
+            if (driver) {
+                subDetails = await Pricelists.findOne({
+                    type: 'driver'
+                })
+            }
             const drive = await Pricelists.findOne({
                 type: driver
             });
-            if (organisation.subscription_status === true) {
-                res.status(301).json({
-                    error: 'У вас уже есть подписка'
-                })
-            }
             if (organisation.subscription_status === false) {
                 function generateRandomString(length) {
                     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -68,7 +87,7 @@ class SubscriptionsController {
                     const idempotenceKey = generateRandomString(7);
                     const requestData = {
                         amount: {
-                            value: subDetails.month_amount,
+                            value: subDetails.price,
                             currency: 'RUB'
                         },
                         capture: true,
