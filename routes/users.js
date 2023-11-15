@@ -3,6 +3,7 @@ import DriversController from "../controllers/DriversController";
 const express = require('express')
 import upload from "../utilities/multer";
 import ClientsController from "../controllers/ClientsController";
+import OrdersControllers from "../controllers/OrdersControllers";
 
 const router = express.Router();
 const uploadFields = upload.any();
@@ -14,9 +15,12 @@ router.put('/clients/update', uploadFields, ClientsController.UpdateData);
 
 // drivers
 router.post('/drivers/make-call', DriversController.makeCall);
-router.post('/upload', DriversController.uploadImage);
+router.post('/upload', uploadFields, DriversController.uploadImage);
+router.get('/drivers/info', DriversController.getData);
 router.post('/drivers/verify', DriversController.registerDriver);
 router.put('/drivers/add-data', DriversController.updateDriver);
+
+router.post('/tariff', OrdersControllers.createTariff);
 
 // dispatchers
 

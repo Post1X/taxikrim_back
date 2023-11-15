@@ -8,6 +8,9 @@ const PaymentMethodsSchema = new Schema({
     },
     user_id: {
         type: Schema.Types.ObjectId,
+    },
+    isNew: {
+        type: Schema.Types.Boolean
     }
 })
 

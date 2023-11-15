@@ -3,11 +3,8 @@ import mongoose from 'mongoose';
 const Schema = mongoose.Schema;
 
 const PaymentsSchema = new Schema({
-   user_id: {
-       type: Schema.Types.ObjectId
-   },
-    order_id: {
-        type: Schema.Types.String
+    seller_id: {
+        type: Schema.Types.ObjectId
     },
     forSub: {
         type: Schema.Types.Boolean

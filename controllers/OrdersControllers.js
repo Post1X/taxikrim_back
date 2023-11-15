@@ -1,6 +1,6 @@
 import OrderStatuses from "../schemas/OrderStatusesSchema";
 import Orders from "../schemas/OrdersSchema";
-import OrdersSchema from "../schemas/OrdersSchema";
+import TariffPrices from "../schemas/TariffPrices";
 
 class OrdersControllers {
     static PlaceOrder = async (req, res, next) => {
@@ -17,7 +17,7 @@ class OrdersControllers {
                 isAnimal,
                 comment
             } = req.body;
-            const  {user_id} = req;
+            const {user_id} = req;
             const comission = 30;
             const distance_price = 5000;
             const status = '64e783585c0ccd9eb28373d4';
@@ -62,9 +62,9 @@ class OrdersControllers {
                 checkups: checkUps,
                 status: status
             })
+            await newOrder.save();
             res.status(200).json({
                 price: price,
-                aaa: 'dwada'
             })
         } catch (e) {
             e.status = 401;
@@ -77,6 +77,24 @@ class OrdersControllers {
             title: title
         })
         await newStatus.save();
+    }
+    //
+    static createTariff = async (req, res, next) => {
+        try {
+            const {type, price, km} = req.body;
+            const newTariff = new TariffPrices({
+                type: type,
+                price: price,
+                km: !!km
+            });
+            await newTariff.save();
+            res.status(200).json({
+                message: true
+            })
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
     }
 }
 

@@ -8,7 +8,7 @@ const uploadFields = upload.any();
 router.post('/create', SubscriptionsController.CreateSubscription);
 router.get('/types', SubscriptionsController.getSubInfo);
 router.post('/subscribe', SubscriptionsController.Subscribe);
-
+router.get('/approve', SubscriptionsController.changeStatus);
 
 
 export default router;

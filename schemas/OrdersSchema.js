@@ -28,7 +28,7 @@ const OrdersSchema = new Schema({
         type: Schema.Types.String
     },
     total_price: {
-        type: Schema.Types.Decimal128
+        type: Schema.Types.Number
     },
     commission: {
         type: Schema.Types.Number

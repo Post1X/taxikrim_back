@@ -1,7 +1,8 @@
 import makeCall from "../utilities/call";
 import Drivers from "../schemas/DriversSchema";
-import Clients from "../schemas/ClientsSchema";
 import jwt from "jsonwebtoken";
+import carBrandsSchema from "../schemas/CarBrandsSchema";
+import CarBrands from "../schemas/CarBrandsSchema";
 
 class DriversController {
     static makeCall = async (req, res, next) => {
@@ -10,6 +11,7 @@ class DriversController {
             const client = await Drivers.findOne({
                 phone: phone
             });
+
             function generateRandomNumberString() {
                 let result = '';
                 for (let i = 0; i < 4; i++) {
@@ -19,6 +21,7 @@ class DriversController {
                 }
                 return result;
             }
+
             const code = generateRandomNumberString();
             await makeCall(phone, code)
             if (!client) {
@@ -86,14 +89,10 @@ class DriversController {
             const file = req.files.find(file => file.fieldname === 'file');
             const parts = file.path.split('public');
             const finalFile = `http://95.163.235.158:3000/${parts[1].substring(1)}`;
-            const newImage = new Images({
-                url: finalFile
-            });
-            await newImage.save();
             res.status(200).json(
-                newImage.url
-            )
-        }catch (e) {
+                finalFile
+            );
+        } catch (e) {
             e.status = 401;
             next(e);
         }
@@ -102,42 +101,67 @@ class DriversController {
     static updateDriver = async (req, res, next) => {
         try {
             const {user_id} = req;
-            const regComplete = true;
-            const {frontPassport,
-                backPassport,
+            const {
+                avatar,
+                passportArray,
                 phone,
                 firstName,
                 lastName,
                 middleName,
-                firstCarPhoto,
-                secondCarPhoto,
-                thirdCarPhoto,
-                fourthCarPhoto,
+                carPhotoArray,
                 publicNumber,
                 carBrandId,
                 carColor,
                 carModel,
-                tariffId} = req.body;
+                tariffId
+            } = req.body;
             await Drivers.updateOne({
                 _id: user_id
             }, {
-                frontPassport,
-                backPassport,
+                avatar,
+                passportArray,
                 phone,
                 firstName,
                 lastName,
                 middleName,
-                firstCarPhoto,
-                secondCarPhoto,
-                thirdCarPhoto,
-                fourthCarPhoto,
+                carPhotoArray,
                 publicNumber,
                 carBrandId,
                 carColor,
                 carModel,
                 tariffId,
-                regComplete
+                regComplete: "verifying"
             })
+            res.status(200).json({
+                status: 'success'
+            });
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static getData = async (req, res, next) => {
+        try {
+            const {user_id} = req;
+            const userdata = await Drivers.findOne({
+                _id: user_id
+            }).populate('tariffId')
+                .populate('carBrandId')
+            res.status(200).json(userdata);
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static createBrand = async (req, res, next) => {
+        try {
+            const {title} = req.body;
+            const newCarBrand = new CarBrands({
+                title: title
+            }) ;
+            await newCarBrand.save();
         }catch (e) {
             e.status = 401;
             next(e);

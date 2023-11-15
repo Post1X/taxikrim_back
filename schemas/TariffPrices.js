@@ -6,11 +6,8 @@ const TariffPricesSchema = new Schema({
     type: {
         type: Schema.Types.String
     },
-    sub_type: {
-        type: Schema.Types.String
-    },
     price: {
-        type: Schema.Types.Decimal128
+        type: Schema.Types.Number
     },
     km: {
         type: Schema.Types.Boolean

@@ -10,7 +10,10 @@ const PricelistsSchema = new Schema({
         type: Schema.Types.String
     },
     price: {
-        type: Schema.Types.Decimal128
+        type: Schema.Types.Number
+    },
+    description: {
+        type: Schema.Types.String
     }
 })
 

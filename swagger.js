@@ -5,7 +5,7 @@ const doc = {
         title: 'Taxi-Krim',
         description: 'DOC for Taxi-Krim',
     },
-    host: 'localhost:3000',
+    host: '95.163.235.158:3001',
     schemes: ['http'],
     securityDefinitions: {
         bearerAuth: {

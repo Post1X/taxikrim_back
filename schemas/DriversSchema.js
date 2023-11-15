@@ -9,11 +9,8 @@ const DriversSchema = new Schema({
     code: {
         type: Schema.Types.String
     },
-    frontPassport: {
-        type: Schema.Types.String
-    },
-    backPassport: {
-        type: Schema.Types.String
+    passportArray: {
+        type: Schema.Types.Array
     },
     phone: {
         type: Schema.Types.String
@@ -27,24 +24,15 @@ const DriversSchema = new Schema({
     middleName: {
         type: Schema.Types.String
     },
-    firstCarPhoto: {
-        type: Schema.Types.String
-    },
-    secondCarPhoto: {
-        type: Schema.Types.String
-    },
-    thirdCarPhoto: {
-        type: Schema.Types.String
-    },
-    fourthCarPhoto: {
-        type: Schema.Types.String
+    carPhotoArray: {
+        type: Schema.Types.Array
     },
     publicNumber: {
         type: Schema.Types.String
     },
     carBrandId: {
         type: Schema.Types.ObjectId,
-        ref: 'CarTypes'
+        ref: 'CarBrands'
     },
     carColor: {
         type: Schema.Types.String
@@ -56,9 +44,6 @@ const DriversSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'TariffPrices'
     },
-    isDispatch: {
-        type: Schema.Types.Boolean
-    },
     subscription_until: {
         type: Schema.Types.Date
     },
@@ -67,7 +52,7 @@ const DriversSchema = new Schema({
         default: false
     },
     regComplete: {
-        type: Schema.Types.Boolean,
+        type: Schema.Types.String,
         default: false
     }
 })
