@@ -134,33 +134,50 @@ class SubscriptionsController {
                 user_id: user_id,
                 isNew: true
             });
-            if (payment) {
+            const user = await Drivers.findOne({
+                _id: user_id
+            })
+            // if (payment) {
                 await Payments.updateMany({
                     seller_id: user_id,
                     isNew: false
                 })
                 const newPayment = new Payments({
                     seller_id: user_id,
-                    payment_method_id: payment.payment_method_id,
+                    // payment_method_id: payment.payment_method_id,
                     type: type,
                     isNew: true
                 })
+                console.log('anus1')
                 const currentDate = new Date();
                 const futureDate = new Date(currentDate);
                 futureDate.setMonth(currentDate.getMonth() + 1);
                 const isoFormat = futureDate.toISOString();
-                await Drivers.findOneAndUpdate({
-                    _id: user_id
-                }, {
-                    subscription_status: true,
-                    subscription_until: isoFormat,
-                    is_active: true
-                });
+                if (user.regComplete !== 'complete' && user.regComplete !== 'rejected') {
+                    await Drivers.findOneAndUpdate({
+                        _id: user_id
+                    }, {
+                        subscription_status: true,
+                        subscription_until: isoFormat,
+                        is_active: true,
+                        regComplete: 'subscribed'
+                    });
+                } if (user.regComplete === 'complete' && user.regComplete === 'rejected') {
+                    console.log('anus3')
+                    await Drivers.findOneAndUpdate({
+                        _id: user_id
+                    }, {
+                        subscription_status: true,
+                        subscription_until: isoFormat,
+                        is_active: true,
+                    });
+                }
+                console.log('anus1')
                 await newPayment.save()
                 res.status(200).json({
                     message: 'success'
                 })
-            }
+            // }
         } catch (e) {
             e.status = 401;
             next(e);

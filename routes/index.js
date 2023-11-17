@@ -3,6 +3,7 @@ import subscription from "./subscription";
 import city from "./city";
 import order from "./order";
 import adddata from "./adddata";
+import admin from "./admin";
 
 import authorization from "../middlewares/validation";
 
@@ -15,5 +16,6 @@ router.use('/subscription', authorization, subscription);
 router.use('/city', authorization, city);
 router.use('/order', authorization, order);
 router.use('/add-data', adddata);
+router.use('/root', authorization, admin);
 
 export default router;

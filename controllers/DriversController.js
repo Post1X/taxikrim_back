@@ -23,7 +23,7 @@ class DriversController {
             }
 
             const code = generateRandomNumberString();
-            await makeCall(phone, code)
+            // await makeCall(phone, code)
             if (!client) {
                 const newClient = new Drivers({
                     phone: phone,
@@ -66,7 +66,8 @@ class DriversController {
                 await Drivers.findOneAndUpdate({
                     phone: phone
                 }, {
-                    code: null
+                    code: null,
+                    regComplete: 'in_progress'
                 });
                 const token = jwt.sign({
                     phone: phone,
@@ -107,6 +108,7 @@ class DriversController {
                 phone,
                 firstName,
                 lastName,
+                telegram,
                 middleName,
                 carPhotoArray,
                 publicNumber,
@@ -119,6 +121,7 @@ class DriversController {
                 _id: user_id
             }, {
                 avatar,
+                telegram,
                 passportArray,
                 phone,
                 firstName,
@@ -146,8 +149,7 @@ class DriversController {
             const {user_id} = req;
             const userdata = await Drivers.findOne({
                 _id: user_id
-            }).populate('tariffId')
-                .populate('carBrandId')
+            }).populate('carBrandId')
             res.status(200).json(userdata);
         } catch (e) {
             e.status = 401;

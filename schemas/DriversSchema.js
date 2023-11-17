@@ -27,6 +27,9 @@ const DriversSchema = new Schema({
     carPhotoArray: {
         type: Schema.Types.Array
     },
+    telegram: {
+        type: Schema.Types.String
+    },
     publicNumber: {
         type: Schema.Types.String
     },
@@ -39,10 +42,6 @@ const DriversSchema = new Schema({
     },
     carModel: {
         type: Schema.Types.String
-    },
-    tariffId: {
-        type: Schema.Types.ObjectId,
-        ref: 'TariffPrices'
     },
     subscription_until: {
         type: Schema.Types.Date

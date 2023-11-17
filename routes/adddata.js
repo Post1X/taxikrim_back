@@ -6,6 +6,8 @@ const express = require('express')
 const router = express.Router();
 
 router.post('/tariff', AddDataController.addTariff);
+router.post('/model', AddDataController.addCarModel);
+router.post('/model', AddDataController.getCarModel);
 router.get('/tariff', AddDataController.getTariff);
 router.post('/brand', DriversController.createBrand);
 
