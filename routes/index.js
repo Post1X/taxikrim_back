@@ -4,6 +4,7 @@ import city from "./city";
 import order from "./order";
 import adddata from "./adddata";
 import admin from "./admin";
+import financial from "./financial";
 
 import authorization from "../middlewares/validation";
 
@@ -17,5 +18,6 @@ router.use('/city', authorization, city);
 router.use('/order', authorization, order);
 router.use('/add-data', adddata);
 router.use('/root', authorization, admin);
+router.use('/financial', authorization, financial);
 
 export default router;

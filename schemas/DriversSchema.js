@@ -53,6 +53,9 @@ const DriversSchema = new Schema({
     regComplete: {
         type: Schema.Types.String,
         default: false
+    },
+    balance: {
+        type: Schema.Types.Number
     }
 })
 

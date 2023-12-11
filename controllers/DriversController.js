@@ -1,7 +1,5 @@
-import makeCall from "../utilities/call";
 import Drivers from "../schemas/DriversSchema";
 import jwt from "jsonwebtoken";
-import carBrandsSchema from "../schemas/CarBrandsSchema";
 import CarBrands from "../schemas/CarBrandsSchema";
 
 class DriversController {
@@ -87,12 +85,14 @@ class DriversController {
     //
     static uploadImage = async (req, res, next) => {
         try {
-            const file = req.files.find(file => file.fieldname === 'file');
-            const parts = file.path.split('public');
-            const finalFile = `http://95.163.235.158:3000/${parts[1].substring(1)}`;
-            res.status(200).json(
-                finalFile
-            );
+            const uploadedFiles = {};
+            if (req.files && req.files.length > 0) {
+                req.files.forEach(file => {
+                    const parts = file.path.split('public');
+                    uploadedFiles[file.fieldname] = `http://95.163.235.158:3000/${parts[1].substring(1)}`;
+                });
+            }
+            res.status(200).json(uploadedFiles);
         } catch (e) {
             e.status = 401;
             next(e);

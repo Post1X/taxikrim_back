@@ -1,32 +1,27 @@
-const apiKey = 'cd99dbd7-5c2c-4ca2-93d3-6e590ecc7f14';
+import https from 'https';
 
+export default async function findCity(text) {
+    const url = `https://suggest-maps.yandex.ru/v1/suggest?apikey=20bca3d8-7d07-4e1f-8383-83efa72d1ee4&text=${text}&type=geo`;
 
-export async function searchAddress(searchText) {
-    const url = `https://geocode-maps.yandex.ru/1.x/?apikey=${apiKey}&format=json&geocode=${searchText}`;
-
-    try {
-        const response = await fetch(url);
-        const data = await response.json();
-        console.log(data);
-
-        const addressComponents = data.response.GeoObjectCollection.featureMember[0].GeoObject.metaDataProperty.GeocoderMetaData.Address.Components;
-        const city = addressComponents[3].name;
-        const district = addressComponents[4].name;
-        const street = addressComponents[5].name;
-
-        return `${city}, ${district}, ${street}`;
-    } catch (error) {
-        console.error('Error:', error);
-        throw error; // Пробрасываем ошибку дальше, чтобы её можно было обработать в вызывающем коде
-    }
-}
-
-//
-
-export async function searchCity(searchText) {
-    const url = `https://geocode-maps.yandex.ru/1.x/?apikey=${apiKey}&format=json&geocode=${searchText}&kind=locality`;
-    const response = await fetch(url);
-    const data = await response.json();
-    console.log(data, 'city');
-    return data.response.GeoObjectCollection.featureMember.map(item => item.GeoObject.name);
+    return new Promise((resolve, reject) => {
+        https.get(url, (response) => {
+            let data = '';
+            response.on('data', (chunk) => {
+                data += chunk;
+            });
+            response.on('end', () => {
+                try {
+                    const json = JSON.parse(data);
+                    const filteredResults = json.results.filter(result => result.tags.includes("locality"));
+                    resolve(filteredResults);
+                } catch (error) {
+                    console.error(error);
+                    reject('error');
+                }
+            });
+        }).on('error', (error) => {
+            console.error(error);
+            reject('error');
+        });
+    });
 }

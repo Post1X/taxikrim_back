@@ -9,8 +9,17 @@ const OrdersSchema = new Schema({
     destination_end: {
         type: Schema.Types.Mixed
     },
+    full_address_start: {
+        type: Schema.Types.String
+    },
+    full_address_end: {
+        type: Schema.Types.String
+    },
     date: {
-        type: Schema.Types.Mixed
+        type: Schema.Types.Date
+    },
+    time: {
+        type: Schema.Types.String
     },
     car_type: {
         type: Schema.Types.String
@@ -21,8 +30,14 @@ const OrdersSchema = new Schema({
     body_count: {
         type: Schema.Types.Number
     },
-    checkups: {
-        type: Schema.Types.Mixed
+    animals: {
+        type: Schema.Types.Boolean
+    },
+    booster: {
+        type: Schema.Types.Boolean
+    },
+    kid: {
+        type: Schema.Types.Boolean
     },
     comment: {
         type: Schema.Types.String
@@ -33,9 +48,6 @@ const OrdersSchema = new Schema({
     commission: {
         type: Schema.Types.Number
     },
-    type: {
-        type: Schema.Types.Mixed
-    },
     driver: {
         type: Schema.Types.ObjectId,
         ref: 'Drivers',
@@ -43,10 +55,6 @@ const OrdersSchema = new Schema({
     },
     paymentMethod: {
         type: Schema.Types.String
-    },
-    client: {
-        type: Schema.Types.ObjectId,
-        ref: 'Clients'
     },
     dispatcher: {
         type: Schema.Types.ObjectId,

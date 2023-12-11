@@ -6,6 +6,9 @@ const router = express.Router();
 const uploadFields = upload.any();
 
 router.post('/create', OrdersControllers.PlaceOrder);
+router.get('/single', OrdersControllers.getOrder);
+router.get('/all', OrdersControllers.getOrders);
+router.get('/driver', OrdersControllers.getOrdersForDriver);
 // router.post('/status', OrdersControllers.asasa);
 
 export default router;
