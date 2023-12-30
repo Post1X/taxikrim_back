@@ -1,6 +1,7 @@
 import Drivers from "../schemas/DriversSchema";
 import jwt from "jsonwebtoken";
 import CarBrands from "../schemas/CarBrandsSchema";
+import {driverCloseOrder} from "../api/driverCloseOrder";
 
 class DriversController {
     static makeCall = async (req, res, next) => {
@@ -162,9 +163,9 @@ class DriversController {
             const {title} = req.body;
             const newCarBrand = new CarBrands({
                 title: title
-            }) ;
+            });
             await newCarBrand.save();
-        }catch (e) {
+        } catch (e) {
             e.status = 401;
             next(e);
         }

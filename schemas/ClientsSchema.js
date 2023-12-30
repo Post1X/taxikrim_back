@@ -11,6 +11,10 @@ const ClientsSchema = new Schema({
     },
     img: {
         type: Schema.Types.String
+    },
+    code: {
+        type: Schema.Types.String,
+        default: null
     }
 })
 

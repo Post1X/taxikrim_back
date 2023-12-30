@@ -57,8 +57,7 @@ const OrdersSchema = new Schema({
         type: Schema.Types.String
     },
     dispatcher: {
-        type: Schema.Types.ObjectId,
-        ref: 'Dispatchers'
+        type: Schema.Types.Number,
     },
     status: {
         type: Schema.Types.ObjectId,

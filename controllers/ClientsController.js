@@ -20,6 +20,7 @@ class ClientsController {
                 return result;
             }
 
+            console.log(client);
             const code = generateRandomNumberString();
             await makeCall(phone_number, code)
             if (!client) {
@@ -39,7 +40,8 @@ class ClientsController {
             }
             ;
             res.status(200).json({
-                success: true
+                success: true,
+                code: code
             })
         } catch (e) {
             e.status = 401;
@@ -82,14 +84,16 @@ class ClientsController {
     //
     static UpdateData = async (req, res, next) => {
         try {
-            const destination = `${req.files[0].destination}${req.files[0].filename}`.split('public')[1];
             const {user_id} = req;
-            const {name} = req.body;
+            const {name, img} = req.body;
             await Clients.findOneAndUpdate({
                 _id: user_id
             }, {
                 full_name: name,
-                img: destination
+                img: img
+            })
+            res.status(200).json({
+                message: 'success'
             })
         } catch (e) {
             e.status = 401;
@@ -106,6 +110,24 @@ class ClientsController {
             res.status(200).json({
                 message: 'success'
             });
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static getInfo = async (req, res, next) => {
+        try {
+            const {user_id} = req;
+            const client = await Clients.findOne({
+                _id: user_id
+            });
+            if (client)
+                return res.status(200).json(client)
+            else
+                return res.status(400).json({
+                    message: 'Непредвиденная ошибка. Пожалуйста, попробуйте позже.'
+                })
         } catch (e) {
             e.status = 401;
             next(e);

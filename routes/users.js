@@ -12,6 +12,7 @@ const uploadFields = upload.any();
 router.post('/clients/make-call', ClientsController.RegisterNumber);
 router.post('/clients/register', ClientsController.RegisterBuyer);
 router.put('/clients/update', uploadFields, ClientsController.UpdateData);
+router.get('/clients/info', ClientsController.getInfo);
 
 // drivers
 router.post('/drivers/make-call', DriversController.makeCall);

@@ -1,6 +1,11 @@
 import OrderStatuses from "../schemas/OrderStatusesSchema";
 import Orders from "../schemas/OrdersSchema";
 import TariffPrices from "../schemas/TariffPrices";
+import {getAllOpenOrders} from "../api/getAllOpenOrders";
+import {driverBuyOrder} from "../api/driverBuyOrder";
+import {getOrderById} from "../api/getOrderById";
+import Drivers from "../schemas/DriversSchema";
+import {driverCloseOrder} from "../api/driverCloseOrder";
 
 class OrdersControllers {
     static PlaceOrder = async (req, res, next) => {
@@ -80,31 +85,8 @@ class OrdersControllers {
     static getOrder = async (req, res, next) => {
         try {
             const {orderId} = req.query;
-            const order = await Orders.findOne({
-                _id: orderId
-            });
-            const resData = {
-                destination_start: 'Starting Point A',
-                destination_end: 'Destination Point X',
-                full_address_start: '123 Main Street, City A',
-                full_address_end: '456 Elm Street, City X',
-                date: new Date('2023-12-01T08:00:00Z'),
-                time: '10:30 AM',
-                car_type: 'Luxury',
-                baggage_count: 2,
-                body_count: 3,
-                animals: true,
-                booster: false,
-                kid: true,
-                comment: 'Special instructions for the driver',
-                total_price: 75.5,
-                commission: 10.25,
-                driver: '60d5ebf7e9c7f96d6a0f8ea1',
-                paymentMethod: 'Credit Card',
-                dispatcher: '60d5ebf7e9c7f96d6a0f8ea2',
-                status: '60d5ebf7e9c7f96d6a0f8ea3'
-            }
-            res.status(200).json(order ? order : resData)
+            const orders =  await getOrderById(orderId);
+            res.status(200).json(orders);
         } catch (e) {
             e.status = 401;
             next(e);
@@ -115,51 +97,7 @@ class OrdersControllers {
         try {
             // const {user_id} = req;
             const orders = await Orders.find({});
-            const mockOrdersData = [
-                {
-                    destination_start: 'Starting Point A',
-                    destination_end: 'Destination Point X',
-                    full_address_start: '123 Main Street, City A',
-                    full_address_end: '456 Elm Street, City X',
-                    date: new Date('2023-12-01T08:00:00Z'),
-                    time: '10:30 AM',
-                    car_type: 'Luxury',
-                    baggage_count: 2,
-                    body_count: 3,
-                    animals: true,
-                    booster: false,
-                    kid: true,
-                    comment: 'Special instructions for the driver',
-                    total_price: 75.5,
-                    commission: 10.25,
-                    driver: '60d5ebf7e9c7f96d6a0f8ea1',
-                    paymentMethod: 'Credit Card',
-                    dispatcher: '60d5ebf7e9c7f96d6a0f8ea2',
-                    status: '60d5ebf7e9c7f96d6a0f8ea3'
-                },
-                {
-                    destination_start: 'Starting Point B',
-                    destination_end: 'Destination Point Y',
-                    full_address_start: '789 Oak Street, City B',
-                    full_address_end: '012 Pine Street, City Y',
-                    date: new Date('2023-11-15T09:30:00Z'),
-                    time: '12:45 PM',
-                    car_type: 'Standard',
-                    baggage_count: 1,
-                    body_count: 2,
-                    animals: false,
-                    booster: true,
-                    kid: false,
-                    comment: 'No additional instructions',
-                    total_price: 50.25,
-                    commission: 8.75,
-                    driver: '60d5ebf7e9c7f96d6a0f8ea4',
-                    paymentMethod: 'Cash',
-                    dispatcher: '60d5ebf7e9c7f96d6a0f8ea5',
-                    status: '60d5ebf7e9c7f96d6a0f8ea6'
-                }
-            ];
-            res.status(200).json(orders ? orders : mockOrdersData)
+            return res.status(200).json(await getAllOpenOrders());
         } catch (e) {
             e.status = 401;
             next(e);
@@ -169,31 +107,9 @@ class OrdersControllers {
     static getOrdersForDriver = async (req, res, next) => {
         try {
             const {user_id} = req;
-            const orders = await Orders.find({
-                driver: user_id
-            });
-            const mockOrdersData = {
-                destination_start: 'Starting Point A',
-                destination_end: 'Destination Point X',
-                full_address_start: '123 Main Street, City A',
-                full_address_end: '456 Elm Street, City X',
-                date: new Date('2023-12-01T08:00:00Z'),
-                time: '10:30 AM',
-                car_type: 'Luxury',
-                baggage_count: 2,
-                body_count: 3,
-                animals: true,
-                booster: false,
-                kid: true,
-                comment: 'Special instructions for the driver',
-                total_price: 75.5,
-                commission: 10.25,
-                driver: '60d5ebf7e9c7f96d6a0f8ea1',
-                paymentMethod: 'Credit Card',
-                dispatcher: '60d5ebf7e9c7f96d6a0f8ea2',
-                status: '60d5ebf7e9c7f96d6a0f8ea3'
-            };
-            res.status(200).json(orders ? orders : mockOrdersData);
+            const orders = await getAllOpenOrders();
+            const filtered = orders.orders.filter(item => item.order_driver === user_id);
+            res.status(200).json(filtered ? filtered : null);
         } catch (e) {
             e.status = 401;
             next(e);
@@ -219,6 +135,45 @@ class OrdersControllers {
             res.status(200).json({
                 message: true
             })
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static buyOrder = async (req, res, next) => {
+        try {
+            const {user_id} = req;
+            const {order_id} = req.query;
+            const order = await getOrderById(order_id);
+            const driver = await Drivers.findOne({
+                _id: user_id
+            });
+            const balance = driver.balance;
+            if ((balance - order.orders[0].order_price) < 1500)
+                return res.status(400).json({
+                    message: "Пожалуйста, пополните баланс для совершения операции."
+                });
+            else {
+                const request = await driverBuyOrder(order_id, user_id);
+                await Drivers.updateOne({
+                    _id: user_id
+                }, {
+                    balance: (balance - order.orders[0].order_price)
+                })
+                return res.status(200).json(request);
+            }
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static closeOrder = async (req, res, next) => {
+        try {
+            const {orderId} = req.query;
+            const request = await driverCloseOrder(orderId);
+            return res.status(200).json(request);
         } catch (e) {
             e.status = 401;
             next(e);

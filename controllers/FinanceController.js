@@ -28,27 +28,7 @@ class FinanceController {
             const user = await Drivers.findOne({
                 _id: user_id
             });
-            const mockOrdersData = {
-                destination_start: 'Starting Point A',
-                destination_end: 'Destination Point X',
-                full_address_start: '123 Main Street, City A',
-                full_address_end: '456 Elm Street, City X',
-                date: new Date('2023-12-01T08:00:00Z'),
-                time: '10:30 AM',
-                car_type: 'Luxury',
-                baggage_count: 2,
-                body_count: 3,
-                animals: true,
-                booster: false,
-                kid: true,
-                comment: 'Special instructions for the driver',
-                total_price: 75.5,
-                commission: 10,
-                driver: '60d5ebf7e9c7f96d6a0f8ea1',
-                paymentMethod: 'Credit Card',
-                dispatcher: '60d5ebf7e9c7f96d6a0f8ea2',
-                status: '60d5ebf7e9c7f96d6a0f8ea3'
-            };
+
             const comission = mockOrdersData.commission / 100;
             // const order = await Orders.findOne({
             //     _id: orderId

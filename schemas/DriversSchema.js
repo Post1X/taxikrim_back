@@ -55,7 +55,8 @@ const DriversSchema = new Schema({
         default: false
     },
     balance: {
-        type: Schema.Types.Number
+        type: Schema.Types.Number,
+        default: 0
     }
 })
 
