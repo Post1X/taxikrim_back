@@ -1,7 +1,6 @@
 import Drivers from "../schemas/DriversSchema";
 import jwt from "jsonwebtoken";
 import CarBrands from "../schemas/CarBrandsSchema";
-import {driverCloseOrder} from "../api/driverCloseOrder";
 
 class DriversController {
     static makeCall = async (req, res, next) => {
@@ -165,6 +164,21 @@ class DriversController {
                 title: title
             });
             await newCarBrand.save();
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static updateToken = async (req, res, next) => {
+        try {
+            const {user_id} = req;
+            const {fcm_token} = req.body;
+            await Drivers.updateOne({
+                _id: user_id
+            }, {
+                fcm_token
+            })
         } catch (e) {
             e.status = 401;
             next(e);

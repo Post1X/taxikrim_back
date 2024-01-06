@@ -16,6 +16,7 @@ router.get('/clients/info', ClientsController.getInfo);
 
 // drivers
 router.post('/drivers/make-call', DriversController.makeCall);
+router.put('/drivers/token', DriversController.updateToken);
 router.post('/upload', uploadFields, DriversController.uploadImage);
 router.get('/drivers/info', DriversController.getData);
 router.post('/drivers/verify', DriversController.registerDriver);

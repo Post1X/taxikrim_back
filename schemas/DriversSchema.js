@@ -54,6 +54,10 @@ const DriversSchema = new Schema({
         type: Schema.Types.String,
         default: false
     },
+    fcm_token: {
+        type: Schema.Types.String,
+        default: null
+    },
     balance: {
         type: Schema.Types.Number,
         default: 0

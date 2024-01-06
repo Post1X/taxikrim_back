@@ -6,6 +6,8 @@ import {driverBuyOrder} from "../api/driverBuyOrder";
 import {getOrderById} from "../api/getOrderById";
 import Drivers from "../schemas/DriversSchema";
 import {driverCloseOrder} from "../api/driverCloseOrder";
+import bodyParser from "express";
+import {appCreateOrder} from "../api/appCreateOrder";
 
 class OrdersControllers {
     static PlaceOrder = async (req, res, next) => {
@@ -17,6 +19,7 @@ class OrdersControllers {
                 fulladressstart,
                 date,
                 time,
+                full_price,
                 tariffId,
                 paymentMethod,
                 countPeople,
@@ -24,34 +27,35 @@ class OrdersControllers {
                 isBaby,
                 isBuster,
                 isAnimal,
-                comment
+                comment,
+                phone_number
             } = req.body;
             const {user_id} = req;
             const comission = 30;
             const distance_price = 5000;
             const status = '64e783585c0ccd9eb28373d4';
-            let price = distance_price;
-            if (countPeople <= 5) {
-                price += 1500;
-            }
-            if (countPeople > 5) {
-                price += 2500;
-            }
-            if (isBagage <= 5) {
-                price += 200;
-            }
-            if (isBagage > 5) {
-                price += 500;
-            }
-            if (isBaby) {
-                price += 500;
-            }
-            if (isBuster) {
-                price += 300;
-            }
-            if (isAnimal) {
-                price += 400;
-            }
+            // let price = distance_price;
+            // if (countPeople <= 5) {
+            //     price += 1500;
+            // }
+            // if (countPeople > 5) {
+            //     price += 2500;
+            // }
+            // if (isBagage <= 5) {
+            //     price += 200;
+            // }
+            // if (isBagage > 5) {
+            //     price += 500;
+            // }
+            // if (isBaby) {
+            //     price += 500;
+            // }
+            // if (isBuster) {
+            //     price += 300;
+            // }
+            // if (isAnimal) {
+            //     price += 400;
+            // }
             const newOrder = new Orders({
                 destination_start: from,
                 destination_end: to,
@@ -59,6 +63,7 @@ class OrdersControllers {
                 full_address_start: fulladressstart,
                 date: date,
                 time: time,
+                total_amount: full_price,
                 car_type: tariffId,
                 paymentMethod: paymentMethod,
                 client: user_id,
@@ -69,13 +74,27 @@ class OrdersControllers {
                 booster: isBuster,
                 kid: isBaby,
                 comment: comment,
-                dispatcher: user_id,
+                dispatcher: 148,
                 status: status
-            })
-            await newOrder.save();
-            res.status(200).json({
-                price: price,
-            })
+            });
+            let order = {
+                    orderStart: from,
+                    orderFinish: to,
+                    orderStartUser: fulladressstart,
+                    orderFinishUser: fulladressend,
+                    orderTarif: tariffId,
+                    orderPeeple: countPeople,
+                    orderBags: isBagage,
+                    orderDate: date,
+                    orderTime: time,
+                    orderComment: comment,
+                    orderTel: phone_number,
+                    orderPrice: full_price
+                };
+            const response = await appCreateOrder(order);
+            res.status(200).json(
+                response
+            )
         } catch (e) {
             e.status = 401;
             next(e);
@@ -85,7 +104,7 @@ class OrdersControllers {
     static getOrder = async (req, res, next) => {
         try {
             const {orderId} = req.query;
-            const orders =  await getOrderById(orderId);
+            const orders = await getOrderById(orderId);
             res.status(200).json(orders);
         } catch (e) {
             e.status = 401;
