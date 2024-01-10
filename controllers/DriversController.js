@@ -74,7 +74,8 @@ class DriversController {
                 res.status(200).json({
                     token: token,
                     user_data: client,
-                    isDriver: true
+                    isDriver: true,
+                    isReg: true
                 })
             }
         } catch (e) {

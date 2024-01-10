@@ -5,7 +5,7 @@
     "description": "DOC for Taxi-Krim",
     "version": "1.0.0"
   },
-  "host": "95.163.235.158:3001",
+  "host": "5.35.89.71:3001",
   "basePath": "/",
   "schemes": [
     "http"
@@ -133,6 +133,30 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/users/drivers/token": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "fcm_token": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
           }
         }
       }
@@ -330,12 +354,6 @@
         "responses": {
           "200": {
             "description": "OK"
-          },
-          "301": {
-            "description": "Moved Permanently"
-          },
-          "400": {
-            "description": "Bad Request"
           }
         }
       }
@@ -402,6 +420,9 @@
                 "time": {
                   "example": "any"
                 },
+                "full_price": {
+                  "example": "any"
+                },
                 "tariffId": {
                   "example": "any"
                 },
@@ -424,6 +445,9 @@
                   "example": "any"
                 },
                 "comment": {
+                  "example": "any"
+                },
+                "phone_number": {
                   "example": "any"
                 }
               }

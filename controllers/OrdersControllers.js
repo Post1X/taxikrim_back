@@ -8,10 +8,12 @@ import Drivers from "../schemas/DriversSchema";
 import {driverCloseOrder} from "../api/driverCloseOrder";
 import bodyParser from "express";
 import {appCreateOrder} from "../api/appCreateOrder";
+import io from 'socket.io-client'
 
 class OrdersControllers {
     static PlaceOrder = async (req, res, next) => {
         try {
+            const orderSocket = io.connect('http://localhost:3001/order/created');
             const {
                 from,
                 to,
@@ -56,6 +58,21 @@ class OrdersControllers {
             // if (isAnimal) {
             //     price += 400;
             // }
+            let order = {
+                    orderStart: from,
+                    orderFinish: to,
+                    orderStartUser: fulladressstart,
+                    orderFinishUser: fulladressend,
+                    orderTarif: tariffId,
+                    orderPeeple: countPeople,
+                    orderBags: isBagage,
+                    orderDate: date,
+                    orderTime: time,
+                    orderComment: comment,
+                    orderTel: phone_number,
+                    orderPrice: full_price
+                };
+            // const response = await appCreateOrder(order);
             const newOrder = new Orders({
                 destination_start: from,
                 destination_end: to,
@@ -75,25 +92,18 @@ class OrdersControllers {
                 kid: isBaby,
                 comment: comment,
                 dispatcher: 148,
-                status: status
+                status: status,
+                // web_id: response.order_id
             });
-            let order = {
-                    orderStart: from,
-                    orderFinish: to,
-                    orderStartUser: fulladressstart,
-                    orderFinishUser: fulladressend,
-                    orderTarif: tariffId,
-                    orderPeeple: countPeople,
-                    orderBags: isBagage,
-                    orderDate: date,
-                    orderTime: time,
-                    orderComment: comment,
-                    orderTel: phone_number,
-                    orderPrice: full_price
-                };
-            const response = await appCreateOrder(order);
+            // await newOrder.save();
+            console.log('Попытка отправить данные на сервер:', { order_id: '65969b1c0a48990b48318fa9' });
+            orderSocket.emit('created', { order_id: "65969b1c0a48990b48318fa9" });
+            orderSocket.once('response', (data) => {
+                console.log('Получен ответ от сервера:', data);
+            });
             res.status(200).json(
-                response
+                // response,
+                'as'
             )
         } catch (e) {
             e.status = 401;

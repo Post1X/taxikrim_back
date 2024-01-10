@@ -4,6 +4,7 @@ import city from "./city";
 import order from "./order";
 import adddata from "./adddata";
 import admin from "./admin";
+import message from "./message";
 import financial from "./financial";
 
 import authorization from "../middlewares/validation";
@@ -13,6 +14,7 @@ const express = require('express');
 const router = express.Router();
 
 router.use('/users', authorization, users)
+router.use('/message', message)
 router.use('/subscription', authorization, subscription);
 router.use('/city', authorization, city);
 router.use('/order', authorization, order);

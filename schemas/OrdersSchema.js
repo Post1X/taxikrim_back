@@ -62,6 +62,9 @@ const OrdersSchema = new Schema({
     status: {
         type: Schema.Types.ObjectId,
         ref: 'OrderStatuses'
+    },
+    web_id: {
+        type: Schema.Types.Number
     }
 })
 
