@@ -11,6 +11,10 @@ const FcmSchema = new Schema({
     },
     is_driver: {
         type: Schema.Types.Boolean
+    },
+    urgent: {
+        type: Schema.Types.Boolean,
+        default: false
     }
 })
 

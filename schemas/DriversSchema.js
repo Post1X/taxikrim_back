@@ -61,6 +61,12 @@ const DriversSchema = new Schema({
     balance: {
         type: Schema.Types.Number,
         default: 0
+    },
+    subToUrgent: {
+        type: Schema.Types.Boolean
+    },
+    subToUrgentDate: {
+        type: Schema.Types.Date
     }
 })
 

@@ -16,7 +16,7 @@ const OrdersSchema = new Schema({
         type: Schema.Types.String
     },
     date: {
-        type: Schema.Types.Date
+        type: Schema.Types.String
     },
     time: {
         type: Schema.Types.String
@@ -59,11 +59,10 @@ const OrdersSchema = new Schema({
     dispatcher: {
         type: Schema.Types.Number,
     },
-    status: {
-        type: Schema.Types.ObjectId,
-        ref: 'OrderStatuses'
+    order_status: {
+        type: Schema.Types.String,
     },
-    web_id: {
+    id: {
         type: Schema.Types.Number
     }
 })

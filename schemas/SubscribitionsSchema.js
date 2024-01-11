@@ -3,12 +3,11 @@ import mongoose from "mongoose";
 const Schema = mongoose.Schema;
 
 const SubscriptionsSchema = new Schema({
-    type: {
-        type: Schema.Types.ObjectId,
-        ref: 'Pricelists'
+    driver_price: {
+        type: Schema.Types.Number
     },
-    user_id: {
-        type: Schema.Types.ObjectId,
+    urgent_price: {
+        type: Schema.Types.Number
     }
 })
 

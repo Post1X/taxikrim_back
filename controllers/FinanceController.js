@@ -1,4 +1,5 @@
 import Drivers from "../schemas/DriversSchema";
+import {getPaymentUrl} from "../services/payment";
 
 class FinanceController {
     static getBalance = async (req, res, next) => {
@@ -55,10 +56,9 @@ class FinanceController {
     static replenishBalanceTinkoff = async (req, res, next) => {
         try {
             const {price} = req.body;
-            // await tinkoffaction
-            res.status(200).json({
-                message: 'success'
-            })
+            const {user_id} = req;
+            const response = await getPaymentUrl(price)
+            return res.status(200).json(response);
         } catch (e) {
             e.status = 401;
             next(e);
@@ -69,14 +69,10 @@ class FinanceController {
         try {
             const {price} = req.body;
             const {user_id} = req;
-            const user = await Drivers.findOne({
-                _id: user_id
-            });
-            const balance = user.balance;
             await Drivers.updateOne({
                 _id: user_id
             }, {
-                balance: balance + price
+                $inc: {balance: price}
             })
         } catch (e) {
             e.status = 401;

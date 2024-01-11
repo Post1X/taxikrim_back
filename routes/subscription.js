@@ -9,6 +9,8 @@ router.post('/create', SubscriptionsController.CreateSubscription);
 router.get('/types', SubscriptionsController.getSubInfo);
 router.post('/subscribe', SubscriptionsController.Subscribe);
 router.get('/approve', SubscriptionsController.changeStatus);
+router.post('/urgent', SubscriptionsController.subscribeToUrgent);
+router.post('/urgent/verify', SubscriptionsController.urgentVerified);
 
 
 export default router;

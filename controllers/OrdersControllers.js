@@ -6,9 +6,10 @@ import {driverBuyOrder} from "../api/driverBuyOrder";
 import {getOrderById} from "../api/getOrderById";
 import Drivers from "../schemas/DriversSchema";
 import {driverCloseOrder} from "../api/driverCloseOrder";
-import bodyParser from "express";
-import {appCreateOrder} from "../api/appCreateOrder";
 import io from 'socket.io-client'
+import Fcm from "../schemas/FcmSchema";
+import admin from "firebase-admin";
+import {appCreateOrder} from "../api/appCreateOrder";
 
 class OrdersControllers {
     static PlaceOrder = async (req, res, next) => {
@@ -34,45 +35,22 @@ class OrdersControllers {
             } = req.body;
             const {user_id} = req;
             const comission = 30;
-            const distance_price = 5000;
             const status = '64e783585c0ccd9eb28373d4';
-            // let price = distance_price;
-            // if (countPeople <= 5) {
-            //     price += 1500;
-            // }
-            // if (countPeople > 5) {
-            //     price += 2500;
-            // }
-            // if (isBagage <= 5) {
-            //     price += 200;
-            // }
-            // if (isBagage > 5) {
-            //     price += 500;
-            // }
-            // if (isBaby) {
-            //     price += 500;
-            // }
-            // if (isBuster) {
-            //     price += 300;
-            // }
-            // if (isAnimal) {
-            //     price += 400;
-            // }
             let order = {
-                    orderStart: from,
-                    orderFinish: to,
-                    orderStartUser: fulladressstart,
-                    orderFinishUser: fulladressend,
-                    orderTarif: tariffId,
-                    orderPeeple: countPeople,
-                    orderBags: isBagage,
-                    orderDate: date,
-                    orderTime: time,
-                    orderComment: comment,
-                    orderTel: phone_number,
-                    orderPrice: full_price
-                };
-            // const response = await appCreateOrder(order);
+                orderStart: from,
+                orderFinish: to,
+                orderStartUser: fulladressstart,
+                orderFinishUser: fulladressend,
+                orderTarif: tariffId,
+                orderPeeple: countPeople,
+                orderBags: isBagage,
+                orderDate: date,
+                orderTime: time,
+                orderComment: comment,
+                orderTel: phone_number,
+                orderPrice: full_price
+            };
+            const response = await appCreateOrder(order);
             const newOrder = new Orders({
                 destination_start: from,
                 destination_end: to,
@@ -91,19 +69,41 @@ class OrdersControllers {
                 booster: isBuster,
                 kid: isBaby,
                 comment: comment,
-                dispatcher: 148,
-                status: status,
-                // web_id: response.order_id
+                dispatcher: 11,
+                status: 'На продаже',
+                id: response.order_id
             });
-            // await newOrder.save();
-            console.log('Попытка отправить данные на сервер:', { order_id: '65969b1c0a48990b48318fa9' });
-            orderSocket.emit('created', { order_id: "65969b1c0a48990b48318fa9" });
+            const users = await Fcm.find();
+            let token_array = [];
+            users.map((item) => {
+                console.log(item);
+                if (item.is_driver === true)
+                    token_array.push(item.token);
+            });
+            const message = {
+                notification: {
+                    title: "Новый заказ",
+                    body: "Спеши забрать"
+                },
+                tokens: token_array
+            };
+            await admin.messaging()
+                .sendMulticast(message)
+                .then(() => {
+                    console.log('was sent')
+                })
+                .catch((error) => {
+                    throw error;
+                });
+            await newOrder.save();
+            console.log(response.order_id)
+            orderSocket.emit('created', {order_id: response.order_id});
             orderSocket.once('response', (data) => {
                 console.log('Получен ответ от сервера:', data);
             });
             res.status(200).json(
-                // response,
-                'as'
+                response,
+                // 'as'
             )
         } catch (e) {
             e.status = 401;
@@ -178,10 +178,11 @@ class OrdersControllers {
             const driver = await Drivers.findOne({
                 _id: user_id
             });
+            console.log(order)
             const balance = driver.balance;
-            if ((balance - order.orders[0].order_price) < 1500)
+            if ((balance - order.orders[0].order_price) < 0)
                 return res.status(400).json({
-                    message: "Пожалуйста, пополните баланс для совершения операции."
+                    message: `Для того чтобы взять заказ, вам не хватает: ${-(balance - order.orders[0].order_price)}₽`
                 });
             else {
                 const request = await driverBuyOrder(order_id, user_id);
