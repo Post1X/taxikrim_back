@@ -17,7 +17,7 @@ const router = express.Router();
 router.use('/users', authorization, sub, users)
 router.use('/message', sub, message)
 router.use('/subscription', sub, authorization, subscription);
-router.use('/banners', authorization, subscription);
+router.use('/banners', authorization, banners);
 router.use('/order', authorization, sub,order);
 router.use('/add-data', sub, adddata);
 router.use('/root', authorization, admin);
