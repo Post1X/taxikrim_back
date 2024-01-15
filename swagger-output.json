@@ -171,7 +171,7 @@
         }
       }
     },
-    "/users/drivers/info": {
+    "/users/drivers": {
       "get": {
         "description": "",
         "responses": {
@@ -365,13 +365,10 @@
             "schema": {
               "type": "object",
               "properties": {
-                "type": {
+                "driver": {
                   "example": "any"
                 },
-                "price": {
-                  "example": "any"
-                },
-                "description": {
+                "urgent": {
                   "example": "any"
                 }
               }
@@ -388,13 +385,6 @@
     "/subscription/types": {
       "get": {
         "description": "",
-        "parameters": [
-          {
-            "name": "role",
-            "in": "query",
-            "type": "string"
-          }
-        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -415,9 +405,100 @@
     "/subscription/approve": {
       "get": {
         "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/subscription/urgent": {
+      "post": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/subscription/urgent/verify": {
+      "post": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/banners/": {
+      "post": {
+        "description": "",
         "parameters": [
           {
-            "name": "type",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "img": {
+                  "example": "any"
+                },
+                "title": {
+                  "example": "any"
+                },
+                "description": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "banner_id",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "img": {
+                  "example": "any"
+                },
+                "title": {
+                  "example": "any"
+                },
+                "description": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "banner_id",
             "in": "query",
             "type": "string"
           }
@@ -429,12 +510,22 @@
         }
       }
     },
-    "/city/": {
+    "/banners/all": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/banners/single": {
       "get": {
         "description": "",
         "parameters": [
           {
-            "name": "city",
+            "name": "banner_id",
             "in": "query",
             "type": "string"
           }

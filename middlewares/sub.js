@@ -2,10 +2,11 @@ import Drivers from "../schemas/DriversSchema";
 
 const sub = async (req, res, next) => {
     try {
-        const {user_id} = req;
+        const { user_id } = req;
         const organisation = await Drivers.findOne({
             _id: user_id
         });
+
         if (organisation) {
             if (organisation.subscription_status && organisation.subscription_status === true) {
                 const orgdate = new Date(organisation.subscription_until);
@@ -52,15 +53,17 @@ const sub = async (req, res, next) => {
                     return next();
                 }
             }
-
             console.log('No subscription found. Moving to the next middleware.');
-            next();
+            return next();
         }
-        next();
+
+        console.log('No organisation found. Moving to the next middleware.');
+        return next();
+
     } catch (e) {
         console.error('Error in subscription middleware:', e);
         e.status = 401;
-        next(e);
+        return next(e);
     }
 };
 

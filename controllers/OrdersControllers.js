@@ -10,6 +10,7 @@ import io from 'socket.io-client'
 import Fcm from "../schemas/FcmSchema";
 import admin from "firebase-admin";
 import {appCreateOrder} from "../api/appCreateOrder";
+import {getOrderByDriver} from "../api/getOrderByDriver";
 
 class OrdersControllers {
     static PlaceOrder = async (req, res, next) => {
@@ -45,6 +46,9 @@ class OrdersControllers {
                 orderPeeple: countPeople,
                 orderBags: isBagage,
                 orderDate: date,
+                order_buster: isBuster,
+                order_animals: isAnimal,
+                order_baby_chair: isBaby,
                 orderTime: time,
                 orderComment: comment,
                 orderTel: phone_number,
@@ -124,14 +128,46 @@ class OrdersControllers {
     //
     static getOrders = async (req, res, next) => {
         try {
-            // const {user_id} = req;
-            const orders = await Orders.find({});
-            return res.status(200).json(await getAllOpenOrders());
+            const { from, to, tariff, priceFrom, priceTo } = req.query;
+            let ordersArr = await getAllOpenOrders();
+            if (!ordersArr || !ordersArr.orders || !Array.isArray(ordersArr.orders)) {
+                throw new Error("Unexpected data structure for ordersArr");
+            }
+            const orders = ordersArr.orders;
+            if (from) {
+                ordersArr = orders.filter(order => order.order_start.toLowerCase().includes(from.toLowerCase()));
+            }
+            if (to) {
+                ordersArr = orders.filter(order => order.order_end.toLowerCase().includes(to.toLowerCase()));
+            }
+            if (tariff) {
+                ordersArr = orders.filter(order => order.order_tarif.toLowerCase() === tariff.toLowerCase());
+            }
+            if (priceFrom || priceTo) {
+                ordersArr = orders.filter(order => {
+                    const orderPrice = parseInt(order.order_price);
+                    const fromPrice = priceFrom ? parseInt(priceFrom) : null;
+                    const toPrice = priceTo ? parseInt(priceTo) : null;
+
+                    if (fromPrice && toPrice) {
+                        return orderPrice >= fromPrice && orderPrice <= toPrice;
+                    } else if (fromPrice) {
+                        return orderPrice >= fromPrice;
+                    } else if (toPrice) {
+                        return orderPrice <= toPrice;
+                    }
+
+                    return true;
+                });
+            }
+
+            return res.status(200).json(ordersArr);
         } catch (e) {
             e.status = 401;
             next(e);
         }
     }
+
     //
     static getOrdersForDriver = async (req, res, next) => {
         try {
@@ -178,7 +214,6 @@ class OrdersControllers {
             const driver = await Drivers.findOne({
                 _id: user_id
             });
-            console.log(order)
             const balance = driver.balance;
             if ((balance - order.orders[0].order_price) < 0)
                 return res.status(400).json({
@@ -203,7 +238,63 @@ class OrdersControllers {
         try {
             const {orderId} = req.query;
             const request = await driverCloseOrder(orderId);
+            await Orders.updateOne({
+                id: orderId
+            }, {
+                status: 'Закрыт'
+            })
             return res.status(200).json(request);
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static getUrgentOrders = async (req, res, next) => {
+        try {
+            const now = new Date();
+            const anotherOrdersResponse = await getAllOpenOrders();
+            if (!anotherOrdersResponse || !anotherOrdersResponse.orders || anotherOrdersResponse.orders.length === 0) {
+                res.status(200).json({
+                    message: 'Нет заказов на данный момент.'
+                });
+            }
+            const anotherOrders = anotherOrdersResponse.orders;
+            const filteredAnotherOrders = anotherOrders.filter(order => {
+                const orderDate = new Date(order.order_date);
+                orderDate.setDate(orderDate.getDate() + 1);
+                if (orderDate > now && order.order_status === 'На продаже') {
+                    const orderTime = order.order_time.split(':');
+                    const orderHour = parseInt(orderTime[0]);
+                    const orderMinute = parseInt(orderTime[1]);
+                    if (orderHour > now.getHours() || (orderHour === now.getHours() && orderMinute >= now.getMinutes())) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+
+            const allFilteredOrders = [...filteredAnotherOrders];
+            if (allFilteredOrders.length === 0) {
+                res.status(200).json({
+                    message: 'Не найдено'
+                });
+            } else {
+                res.status(200).json(allFilteredOrders);
+            }
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static getArchive = async (req, res, next) => {
+        try {
+            const {user_id} = req;
+            const response = await getOrderByDriver(user_id);
+            if (response.error_message === "У водителя еще нет заказов")
+                return res.status(300).json([]);
+            res.status(200).json(response);
         } catch (e) {
             e.status = 401;
             next(e);

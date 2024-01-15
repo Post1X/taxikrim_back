@@ -5,24 +5,20 @@ class FinanceController {
     static getBalance = async (req, res, next) => {
         try {
             const {user_id} = req;
-            // const balance = await tinkoff.findBalanceForThis(userid);
-            await Drivers.updateOne({
+            const driver = await Drivers.findOne({
                 _id: user_id
-            }, {
-                balance: 25000
             });
-            res.status(200).json(
-                {
-                    balance: 25000
-                }
-            )
+            res.status(200).json({
+                balance: driver.balance
+            })
         } catch (e) {
             e.status = 401;
             next(e);
         }
     }
-    //
-    static buyOrder = async (req, res, next) => {
+//
+    static
+    buyOrder = async (req, res, next) => {
         try {
             const {user_id} = req;
             const {orderId} = req.query;
@@ -35,10 +31,9 @@ class FinanceController {
             //     _id: orderId
             // });
             const balance = user.balance;
-            if (balance < 1000 && balance < (comission * mockOrdersData.total_price))
-                return res.status(200).json({
-                    message: 'Пополните счёт.'
-                });
+            if (balance < 1000 && balance < (comission * mockOrdersData.total_price)) return res.status(200).json({
+                message: 'Пополните счёт.'
+            });
             await Drivers.updateOne({
                 _id: user
             }, {
@@ -52,8 +47,9 @@ class FinanceController {
             next(e);
         }
     }
-    //
-    static replenishBalanceTinkoff = async (req, res, next) => {
+//
+    static
+    replenishBalanceTinkoff = async (req, res, next) => {
         try {
             const {price} = req.body;
             const {user_id} = req;
@@ -64,8 +60,9 @@ class FinanceController {
             next(e);
         }
     }
-    //
-    static replenishBalanceBase = async (req, res, next) => {
+//
+    static
+    replenishBalanceBase = async (req, res, next) => {
         try {
             const {price} = req.body;
             const {user_id} = req;
@@ -73,6 +70,9 @@ class FinanceController {
                 _id: user_id
             }, {
                 $inc: {balance: price}
+            })
+            res.status(200).json({
+                message: 'success'
             })
         } catch (e) {
             e.status = 401;

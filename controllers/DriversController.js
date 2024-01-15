@@ -26,6 +26,7 @@ class DriversController {
                 const newClient = new Drivers({
                     phone: phone,
                     code: code,
+                    regComplete: 'in_progress'
                 });
                 await newClient.save();
             }
@@ -65,7 +66,6 @@ class DriversController {
                     phone: phone
                 }, {
                     code: null,
-                    regComplete: 'in_progress'
                 });
                 const token = jwt.sign({
                     phone: phone,
@@ -148,10 +148,10 @@ class DriversController {
     static getData = async (req, res, next) => {
         try {
             const {user_id} = req;
-            const userdata = await Drivers.findOne({
+            const userdata = await Drivers.findById({
                 _id: user_id
-            }).populate('carBrandId')
-            res.status(200).json(userdata);
+            });
+            return res.status(200).json(userdata);
         } catch (e) {
             e.status = 401;
             next(e);
@@ -179,6 +179,29 @@ class DriversController {
                 _id: user_id
             }, {
                 fcm_token
+            })
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static isDriverLogged = async (req, res, next) => {
+        try {
+            const {phone} = req.body;
+            const driver = await Drivers.findOne({
+                phone: phone
+            });
+            if (driver)
+                return res.status(200).json({
+                    wasLogged: true
+                })
+            if (!driver)
+                return res.status(200).json({
+                    wasLogged: false
+                })
+            return res.status(200).json({
+                message: 'Непредвиденная техническая ошибка.'
             })
         } catch (e) {
             e.status = 401;

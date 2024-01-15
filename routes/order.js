@@ -12,6 +12,8 @@ router.get('/single', OrdersControllers.getOrder);
 router.post('/close', OrdersControllers.closeOrder);
 router.post('/buy', OrdersControllers.buyOrder);
 router.get('/all', OrdersControllers.getOrders);
+router.get('/archive', OrdersControllers.getArchive);
 router.get('/driver', OrdersControllers.getOrdersForDriver);
+router.get('/urgent', OrdersControllers.getUrgentOrders);
 
 export default router;

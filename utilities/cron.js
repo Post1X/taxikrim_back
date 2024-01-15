@@ -11,6 +11,12 @@ const asyncSearchFunction = async () => {
     try {
         const now = new Date();
         const anotherOrdersResponse = await getAllOpenOrders();
+
+        if (!anotherOrdersResponse || !anotherOrdersResponse.orders || anotherOrdersResponse.orders.length === 0) {
+            console.log('Нет новых заказов');
+            return 'Нет новых заказов';
+        }
+
         const anotherOrders = anotherOrdersResponse.orders;
         const filteredAnotherOrders = anotherOrders.filter(order => {
             const orderDate = new Date(order.order_date);
@@ -25,18 +31,21 @@ const asyncSearchFunction = async () => {
             }
             return false;
         });
+
         const allFilteredOrders = [...filteredAnotherOrders];
         if (allFilteredOrders.length === 0) {
             console.log('Не найдено');
             return 'Не найдено';
         } else {
             console.log('Найдено');
+
             const users = await Fcm.find();
             let token_array = [];
             users.map((item) => {
                 if (item.is_driver === true)
                     token_array.push(item.token);
             });
+
             const message = {
                 notification: {
                     title: "УСПЕЙ ВЗЯТЬ!",
@@ -44,11 +53,13 @@ const asyncSearchFunction = async () => {
                 },
                 tokens: token_array
             };
+
             await admin.messaging()
                 .sendMulticast(message)
                 .catch((error) => {
                     throw error;
                 });
+
             urgentOrders.emit('found', allFilteredOrders);
             return allFilteredOrders;
         }
@@ -57,6 +68,7 @@ const asyncSearchFunction = async () => {
         throw error;
     }
 };
+
 asyncSearchFunction()
     .then(result => {
         console.log('ok')
@@ -66,9 +78,10 @@ asyncSearchFunction()
     });
 
 const setupCronTask = () => {
-    const cronSchedule = '* */15 * * * *';
+    const cronSchedule = '*/30 * * * * *';
     cron.schedule(cronSchedule, async () => {
         await asyncSearchFunction();
     });
 };
+
 export default setupCronTask;

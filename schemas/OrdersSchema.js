@@ -30,15 +30,6 @@ const OrdersSchema = new Schema({
     body_count: {
         type: Schema.Types.Number
     },
-    animals: {
-        type: Schema.Types.Boolean
-    },
-    booster: {
-        type: Schema.Types.Boolean
-    },
-    kid: {
-        type: Schema.Types.Boolean
-    },
     comment: {
         type: Schema.Types.String
     },

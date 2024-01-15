@@ -1,19 +1,17 @@
 import Orders from "../schemas/OrdersSchema";
+import {getOrderById} from "../api/getOrderById";
 
 const socketLogic = (server, io) => {
     const createdOrder = io.of('/order/created');
     const statusChanged = io.of('/order/status');
     const urgentOrders = io.of('/order/urgent');
-    const test = io.of('/test');
-
+    //
     createdOrder.on('connection', async (socket) => {
         try {
             socket.on('created', async (data) => {
                 try {
                     const {order_id} = data;
-                    const order = await Orders.findOne({
-                        id: order_id
-                    });
+                    const order = await getOrderById(order_id);
                     socket.broadcast.emit('send', {order});
                 } catch (e) {
                     console.error("Ошибка в сокете:", e);

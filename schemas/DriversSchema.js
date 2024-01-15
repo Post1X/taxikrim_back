@@ -63,10 +63,11 @@ const DriversSchema = new Schema({
         default: 0
     },
     subToUrgent: {
-        type: Schema.Types.Boolean
+        type: Schema.Types.Boolean,
+        default: false
     },
     subToUrgentDate: {
-        type: Schema.Types.Date
+        type: Schema.Types.Date,
     }
 })
 
