@@ -137,6 +137,16 @@
         }
       }
     },
+    "/users/driver/logged": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/users/drivers/token": {
       "put": {
         "description": "",
@@ -171,7 +181,7 @@
         }
       }
     },
-    "/users/drivers": {
+    "/users/drivers/info": {
       "get": {
         "description": "",
         "responses": {
@@ -663,6 +673,33 @@
     "/order/all": {
       "get": {
         "description": "",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "tariff",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "priceFrom",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "priceTo",
+            "in": "query",
+            "type": "string"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -670,7 +707,30 @@
         }
       }
     },
+    "/order/archive": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "300": {
+            "description": "Multiple Choices"
+          }
+        }
+      }
+    },
     "/order/driver": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/order/urgent": {
       "get": {
         "description": "",
         "responses": {
@@ -866,8 +926,8 @@
           }
         ],
         "responses": {
-          "default": {
-            "description": ""
+          "200": {
+            "description": "OK"
           }
         }
       }

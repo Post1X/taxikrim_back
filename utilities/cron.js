@@ -1,4 +1,3 @@
-import Orders from "../schemas/OrdersSchema";
 import io from "socket.io-client";
 import cron from "node-cron";
 import {getAllOpenOrders} from "../api/getAllOpenOrders";
@@ -16,10 +15,10 @@ const asyncSearchFunction = async () => {
             console.log('Нет новых заказов');
             return 'Нет новых заказов';
         }
-
         const anotherOrders = anotherOrdersResponse.orders;
         const filteredAnotherOrders = anotherOrders.filter(order => {
-            const orderDate = new Date(order.order_date);
+            const orderDateParts = order.order_date.split('.');
+            const orderDate = new Date(`${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]}`);
             orderDate.setDate(orderDate.getDate() + 1);
             if (orderDate > now && order.order_status === 'На продаже') {
                 const orderTime = order.order_time.split(':');
@@ -31,21 +30,18 @@ const asyncSearchFunction = async () => {
             }
             return false;
         });
-
         const allFilteredOrders = [...filteredAnotherOrders];
         if (allFilteredOrders.length === 0) {
             console.log('Не найдено');
             return 'Не найдено';
         } else {
             console.log('Найдено');
-
             const users = await Fcm.find();
             let token_array = [];
             users.map((item) => {
                 if (item.is_driver === true)
                     token_array.push(item.token);
             });
-
             const message = {
                 notification: {
                     title: "УСПЕЙ ВЗЯТЬ!",
@@ -54,11 +50,11 @@ const asyncSearchFunction = async () => {
                 tokens: token_array
             };
 
-            await admin.messaging()
-                .sendMulticast(message)
-                .catch((error) => {
-                    throw error;
-                });
+            // await admin.messaging()
+            //     .sendMulticast(message)
+            //     .catch((error) => {
+            //         throw error;
+            //     });
 
             urgentOrders.emit('found', allFilteredOrders);
             return allFilteredOrders;

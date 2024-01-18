@@ -1,5 +1,4 @@
 import Orders from "../schemas/OrdersSchema";
-import {getOrderById} from "../api/getOrderById";
 
 const socketLogic = (server, io) => {
     const createdOrder = io.of('/order/created');
@@ -10,9 +9,7 @@ const socketLogic = (server, io) => {
         try {
             socket.on('created', async (data) => {
                 try {
-                    const {order_id} = data;
-                    const order = await getOrderById(order_id);
-                    socket.broadcast.emit('send', {order});
+                    socket.broadcast.emit('send', data);
                 } catch (e) {
                     console.error("Ошибка в сокете:", e);
                 }

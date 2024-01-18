@@ -68,6 +68,9 @@ const DriversSchema = new Schema({
     },
     subToUrgentDate: {
         type: Schema.Types.Date,
+    },
+    rejectReason: {
+        type: Schema.Types.String
     }
 })
 

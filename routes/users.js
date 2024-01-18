@@ -17,6 +17,7 @@ router.get('/clients/info', ClientsController.getInfo);
 // drivers
 router.post('/drivers/make-call', DriversController.makeCall);
 router.get('/driver/logged', DriversController.isDriverLogged);
+router.delete('/driver/acc', DriversController.deleteAccount)
 router.put('/drivers/token', DriversController.updateToken);
 router.post('/upload', uploadFields, DriversController.uploadImage);
 router.get('/drivers/info', DriversController.getData);

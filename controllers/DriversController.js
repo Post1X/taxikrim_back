@@ -5,11 +5,22 @@ import CarBrands from "../schemas/CarBrandsSchema";
 class DriversController {
     static makeCall = async (req, res, next) => {
         try {
-            const {phone} = req.body;
+            const JWT_SECRET = process.env.JWT_SECRET;
+            const {phone, password} = req.body;
             const client = await Drivers.findOne({
                 phone: phone
             });
-
+            const admLogin = process.env.ADMIN_NUMBER;
+            const admPassword = process.env.ADMIN_PASSWORD;
+            if (phone === admLogin && !!password && admPassword === password) {
+                const token = jwt.sign({
+                    isAdmin: true
+                }, JWT_SECRET);
+                res.status(200).json({
+                    token,
+                    isAdmin: true
+                })
+            }
             function generateRandomNumberString() {
                 let result = '';
                 for (let i = 0; i < 4; i++) {
@@ -147,11 +158,19 @@ class DriversController {
     //
     static getData = async (req, res, next) => {
         try {
-            const {user_id} = req;
+            const {user_id, isAdmin} = req;
             const userdata = await Drivers.findById({
                 _id: user_id
             });
-            return res.status(200).json(userdata);
+            let admin;
+            if (isAdmin === true)
+                admin = true
+            if (isAdmin === false)
+                admin = false
+            return res.status(200).json({
+                userdata,
+                admin
+            });
         } catch (e) {
             e.status = 401;
             next(e);
@@ -202,6 +221,21 @@ class DriversController {
                 })
             return res.status(200).json({
                 message: 'Непредвиденная техническая ошибка.'
+            })
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static deleteAccount = async (req, res, next) => {
+        try {
+            const {user_id} = req;
+            await Drivers.deleteOne({
+                _id: user_id
+            });
+            return res.status(200).json({
+                message: 'success'
             })
         } catch (e) {
             e.status = 401;

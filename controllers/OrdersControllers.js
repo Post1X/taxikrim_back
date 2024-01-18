@@ -15,7 +15,6 @@ import {getOrderByDriver} from "../api/getOrderByDriver";
 class OrdersControllers {
     static PlaceOrder = async (req, res, next) => {
         try {
-            const orderSocket = io.connect('http://localhost:3001/order/created');
             const {
                 from,
                 to,
@@ -100,7 +99,7 @@ class OrdersControllers {
                     throw error;
                 });
             await newOrder.save();
-            console.log(response.order_id)
+            const orderSocket = io.connect('http://localhost:3001/order/created');
             orderSocket.emit('created', {order_id: response.order_id});
             orderSocket.once('response', (data) => {
                 console.log('Получен ответ от сервера:', data);
@@ -128,7 +127,7 @@ class OrdersControllers {
     //
     static getOrders = async (req, res, next) => {
         try {
-            const { from, to, tariff, priceFrom, priceTo } = req.query;
+            const {from, to, tariff, priceFrom, priceTo} = req.query;
             let ordersArr = await getAllOpenOrders();
             if (!ordersArr || !ordersArr.orders || !Array.isArray(ordersArr.orders)) {
                 throw new Error("Unexpected data structure for ordersArr");
@@ -208,6 +207,7 @@ class OrdersControllers {
     //
     static buyOrder = async (req, res, next) => {
         try {
+            const statusSocket = io.connect('http://localhost:3001/order/status');
             const {user_id} = req;
             const {order_id} = req.query;
             const order = await getOrderById(order_id);
@@ -226,6 +226,10 @@ class OrdersControllers {
                 }, {
                     balance: (balance - order.orders[0].order_price)
                 })
+                statusSocket.emit('changed', {order});
+                statusSocket.once('response', (data) => {
+                    console.log('Получен ответ от сервера:', data);
+                });
                 return res.status(200).json(request);
             }
         } catch (e) {
@@ -261,7 +265,8 @@ class OrdersControllers {
             }
             const anotherOrders = anotherOrdersResponse.orders;
             const filteredAnotherOrders = anotherOrders.filter(order => {
-                const orderDate = new Date(order.order_date);
+                const orderDateParts = order.order_date.split('.');
+                const orderDate = new Date(`${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]}`);
                 orderDate.setDate(orderDate.getDate() + 1);
                 if (orderDate > now && order.order_status === 'На продаже') {
                     const orderTime = order.order_time.split(':');

@@ -12,7 +12,7 @@ class AdminController {
             res.status(200).json({
                 message: 'success'
             })
-        }catch (e) {
+        } catch (e) {
             e.status = 401;
             next(e);
         }
@@ -20,16 +20,34 @@ class AdminController {
     //
     static denyDriver = async (req, res, next) => {
         try {
-            const {driverId} = req.query;
+            const {driverId, comment} = req.query;
             await Drivers.updateOne({
                 _id: driverId
             }, {
-                regComplete: 'rejected'
+                regComplete: 'rejected',
+                rejectReason: comment
             })
             res.status(200).json({
                 message: 'success'
             })
-        }catch (e) {
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static getVerifying = async (req, res, next) => {
+        try {
+            const drivers = await Drivers.find({
+                regComplete: "verifying"
+            });
+            if (drivers.length === 0)
+                return res.status(200).json({
+                    message: 'Сейчас здесь пусто.'
+                });
+            if (drivers.length < 0)
+                return res.status(200).json(drivers)
+        } catch (e) {
             e.status = 401;
             next(e);
         }
