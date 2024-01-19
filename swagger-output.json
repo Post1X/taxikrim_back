@@ -125,6 +125,9 @@
               "properties": {
                 "phone": {
                   "example": "any"
+                },
+                "password": {
+                  "example": "any"
                 }
               }
             }
@@ -139,6 +142,16 @@
     },
     "/users/driver/logged": {
       "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/users/driver/acc": {
+      "delete": {
         "description": "",
         "responses": {
           "200": {
@@ -840,12 +853,27 @@
         }
       }
     },
+    "/root/users": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/root/deny": {
       "post": {
         "description": "",
         "parameters": [
           {
             "name": "driverId",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "comment",
             "in": "query",
             "type": "string"
           }

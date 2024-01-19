@@ -37,25 +37,25 @@ const asyncSearchFunction = async () => {
         } else {
             console.log('Найдено');
             const users = await Fcm.find();
-            let token_array = [];
-            users.map((item) => {
-                if (item.is_driver === true)
-                    token_array.push(item.token);
+            let tokenSet = new Set();
+            users.forEach((item) => {
+                if (item.is_driver === true) {
+                    tokenSet.add(item.token);
+                }
             });
+            let uniqueTokens = Array.from(tokenSet);
             const message = {
                 notification: {
                     title: "УСПЕЙ ВЗЯТЬ!",
                     body: "Появились срочные заказы"
                 },
-                tokens: token_array
+                tokens: uniqueTokens
             };
-
-            // await admin.messaging()
-            //     .sendMulticast(message)
-            //     .catch((error) => {
-            //         throw error;
-            //     });
-
+            await admin.messaging()
+                .sendMulticast(message)
+                .catch((error) => {
+                    throw error;
+                });
             urgentOrders.emit('found', allFilteredOrders);
             return allFilteredOrders;
         }

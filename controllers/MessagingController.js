@@ -6,18 +6,19 @@ class MessagingController {
         try {
             const {title, body} = req.body;
             const users = await Fcm.find();
-            let token_array = [];
-            users.map((item) => {
-                token_array.push(item.token);
+            let tokenSet = new Set();
+            users.forEach((item) => {
+                if (item.is_driver === true) {
+                    tokenSet.add(item.token);
+                }
             });
-            console.log(token_array);
-            console.log(title, body);
+            let uniqueTokens = Array.from(tokenSet);
             const message = {
                 notification: {
                     title: title,
                     body: body
                 },
-                tokens: token_array
+                tokens: uniqueTokens
             };
             admin.messaging()
                 .sendMulticast(message)
@@ -39,14 +40,24 @@ class MessagingController {
         try {
             const {user_id} = req;
             const {is_driver, token} = req.body;
-            const newToken = new Fcm({
+            const tokenToCheck = await Fcm.findOne({
                 token: token,
-                user_id: user_id,
-                is_driver: is_driver
+                user_id: user_id
             });
-            await newToken.save().then(res.status(200).json({
-                message: 'success'
-            }));
+            if (tokenToCheck)
+                return res.status(200).json({
+                    message: 'success'
+                });
+            if (!tokenToCheck) {
+                const newToken = new Fcm({
+                    token: token,
+                    user_id: user_id,
+                    is_driver: is_driver
+                });
+                await newToken.save().then(res.status(200).json({
+                    message: 'success'
+                }));
+            }
         } catch (e) {
             e.status = 401;
             next(e);

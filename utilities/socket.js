@@ -1,4 +1,4 @@
-import Orders from "../schemas/OrdersSchema";
+import {getOrderById} from "../api/getOrderById";
 
 const socketLogic = (server, io) => {
     const createdOrder = io.of('/order/created');
@@ -9,7 +9,8 @@ const socketLogic = (server, io) => {
         try {
             socket.on('created', async (data) => {
                 try {
-                    socket.broadcast.emit('send', data);
+                    const response = await getOrderById(data);
+                    socket.broadcast.emit('send', response.orders[0]);
                 } catch (e) {
                     console.error("Ошибка в сокете:", e);
                 }
@@ -21,11 +22,7 @@ const socketLogic = (server, io) => {
     statusChanged.on('connection', async (socket) => {
         try {
             socket.on('changed', async (data) => {
-                const {order_id} = data;
-                const order = await Orders.findOne({
-                    _id: order_id
-                });
-                statusChanged.emit('send', {order});
+                statusChanged.emit('send', data);
             });
         } catch (e) {
             console.error("Ошибка в сокете:", e);

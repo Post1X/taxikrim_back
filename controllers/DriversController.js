@@ -1,6 +1,7 @@
 import Drivers from "../schemas/DriversSchema";
 import jwt from "jsonwebtoken";
 import CarBrands from "../schemas/CarBrandsSchema";
+import {log} from "debug";
 
 class DriversController {
     static makeCall = async (req, res, next) => {
@@ -12,6 +13,11 @@ class DriversController {
             });
             const admLogin = process.env.ADMIN_NUMBER;
             const admPassword = process.env.ADMIN_PASSWORD;
+            if (phone === admLogin && !password)
+                return res.status(200).json({
+                    message: 'success',
+                    isAdmin: true
+                })
             if (phone === admLogin && !!password && admPassword === password) {
                 const token = jwt.sign({
                     isAdmin: true
@@ -167,10 +173,14 @@ class DriversController {
                 admin = true
             if (isAdmin === false)
                 admin = false
-            return res.status(200).json({
+            let response = {
+                ...(userdata !== null && { userdata }),
+                isAdmin: admin
+            }
+            console.log(response)
+            return res.status(200).json(
                 userdata,
-                admin
-            });
+            );
         } catch (e) {
             e.status = 401;
             next(e);
@@ -207,7 +217,7 @@ class DriversController {
     //
     static isDriverLogged = async (req, res, next) => {
         try {
-            const {phone} = req.body;
+            const {phone} = req.query;
             const driver = await Drivers.findOne({
                 phone: phone
             });

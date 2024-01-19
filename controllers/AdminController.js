@@ -41,12 +41,12 @@ class AdminController {
             const drivers = await Drivers.find({
                 regComplete: "verifying"
             });
-            if (drivers.length === 0)
-                return res.status(200).json({
-                    message: 'Сейчас здесь пусто.'
-                });
-            if (drivers.length < 0)
-                return res.status(200).json(drivers)
+            if (drivers.length > 0)
+                return res.status(200).json(drivers);
+            else
+                return res.status(304).json({
+                    message: 'Пусто.'
+                })
         } catch (e) {
             e.status = 401;
             next(e);

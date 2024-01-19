@@ -8,9 +8,9 @@ import Drivers from "../schemas/DriversSchema";
 import {driverCloseOrder} from "../api/driverCloseOrder";
 import io from 'socket.io-client'
 import Fcm from "../schemas/FcmSchema";
-import admin from "firebase-admin";
 import {appCreateOrder} from "../api/appCreateOrder";
 import {getOrderByDriver} from "../api/getOrderByDriver";
+import admin from "firebase-admin";
 
 class OrdersControllers {
     static PlaceOrder = async (req, res, next) => {
@@ -54,6 +54,7 @@ class OrdersControllers {
                 orderPrice: full_price
             };
             const response = await appCreateOrder(order);
+            console.log(response)
             const newOrder = new Orders({
                 destination_start: from,
                 destination_end: to,
@@ -76,38 +77,45 @@ class OrdersControllers {
                 status: 'На продаже',
                 id: response.order_id
             });
-            const users = await Fcm.find();
-            let token_array = [];
-            users.map((item) => {
-                console.log(item);
-                if (item.is_driver === true)
-                    token_array.push(item.token);
-            });
-            const message = {
-                notification: {
-                    title: "Новый заказ",
-                    body: "Спеши забрать"
-                },
-                tokens: token_array
-            };
-            await admin.messaging()
-                .sendMulticast(message)
-                .then(() => {
-                    console.log('was sent')
-                })
-                .catch((error) => {
-                    throw error;
+            if (response.status === 'true') {
+                const users = await Fcm.find();
+                let tokenSet = new Set();
+                users.forEach((item) => {
+                    if (item.is_driver === true) {
+                        tokenSet.add(item.token);
+                    }
                 });
-            await newOrder.save();
-            const orderSocket = io.connect('http://localhost:3001/order/created');
-            orderSocket.emit('created', {order_id: response.order_id});
-            orderSocket.once('response', (data) => {
-                console.log('Получен ответ от сервера:', data);
-            });
-            res.status(200).json(
-                response,
-                // 'as'
-            )
+                let uniqueTokens = Array.from(tokenSet);
+                console.log(uniqueTokens);
+                const message = {
+                    notification: {
+                        title: "Новый заказ",
+                        body: "Спеши забрать"
+                    },
+                    tokens: uniqueTokens
+                };
+                await admin.messaging()
+                    .sendMulticast(message)
+                    .then(() => {
+                        console.log('was sent')
+                    })
+                    .catch((error) => {
+                        throw error;
+                    });
+                await newOrder.save();
+                const orderSocket = io.connect('http://localhost:3001/order/created');
+                orderSocket.emit('created', response.order_id);
+                orderSocket.once('response', (data) => {
+                    console.log('Получен ответ от сервера:', data);
+                });
+                res.status(200).json(
+                    response,
+                )
+            } else {
+                res.status(400).json({
+                    message: 'Создание заказа прошло безуспешно.'
+                })
+            }
         } catch (e) {
             e.status = 401;
             next(e);
@@ -130,7 +138,9 @@ class OrdersControllers {
             const {from, to, tariff, priceFrom, priceTo} = req.query;
             let ordersArr = await getAllOpenOrders();
             if (!ordersArr || !ordersArr.orders || !Array.isArray(ordersArr.orders)) {
-                throw new Error("Unexpected data structure for ordersArr");
+                return res.status(200).json({
+                    message: 'Не найдено.'
+                })
             }
             const orders = ordersArr.orders;
             if (from) {
@@ -155,11 +165,9 @@ class OrdersControllers {
                     } else if (toPrice) {
                         return orderPrice <= toPrice;
                     }
-
                     return true;
                 });
             }
-
             return res.status(200).json(ordersArr);
         } catch (e) {
             e.status = 401;
@@ -173,7 +181,12 @@ class OrdersControllers {
             const {user_id} = req;
             const orders = await getAllOpenOrders();
             const filtered = orders.orders.filter(item => item.order_driver === user_id);
-            res.status(200).json(filtered ? filtered : null);
+            let response;
+            if (filtered)
+                response = filtered
+            else
+                response = [];
+            res.status(200).json(response);
         } catch (e) {
             e.status = 401;
             next(e);
@@ -226,7 +239,7 @@ class OrdersControllers {
                 }, {
                     balance: (balance - order.orders[0].order_price)
                 })
-                statusSocket.emit('changed', {order});
+                statusSocket.emit('changed', order);
                 statusSocket.once('response', (data) => {
                     console.log('Получен ответ от сервера:', data);
                 });
