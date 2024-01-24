@@ -1,4 +1,3 @@
-import OrderStatuses from "../schemas/OrderStatusesSchema";
 import Orders from "../schemas/OrdersSchema";
 import TariffPrices from "../schemas/TariffPrices";
 import {getAllOpenOrders} from "../api/getAllOpenOrders";
@@ -11,6 +10,8 @@ import Fcm from "../schemas/FcmSchema";
 import {appCreateOrder} from "../api/appCreateOrder";
 import {getOrderByDriver} from "../api/getOrderByDriver";
 import admin from "firebase-admin";
+const time = process.env.DELAY_TIME;
+
 
 class OrdersControllers {
     static PlaceOrder = async (req, res, next) => {
@@ -24,7 +25,6 @@ class OrdersControllers {
                 time,
                 full_price,
                 tariffId,
-                paymentMethod,
                 countPeople,
                 isBagage,
                 isBaby,
@@ -33,9 +33,6 @@ class OrdersControllers {
                 comment,
                 phone_number
             } = req.body;
-            const {user_id} = req;
-            const comission = 30;
-            const status = '64e783585c0ccd9eb28373d4';
             let order = {
                 orderStart: from,
                 orderFinish: to,
@@ -54,68 +51,144 @@ class OrdersControllers {
                 orderPrice: full_price
             };
             const response = await appCreateOrder(order);
-            console.log(response)
-            const newOrder = new Orders({
-                destination_start: from,
-                destination_end: to,
-                full_address_end: fulladressend,
-                full_address_start: fulladressstart,
-                date: date,
-                time: time,
-                total_amount: full_price,
-                car_type: tariffId,
-                paymentMethod: paymentMethod,
-                client: user_id,
-                comission: comission,
-                baggage_count: isBagage,
-                body_count: countPeople,
-                animals: isAnimal,
-                booster: isBuster,
-                kid: isBaby,
-                comment: comment,
-                dispatcher: 11,
-                status: 'На продаже',
-                id: response.order_id
-            });
+            console.log(response);
             if (response.status === 'true') {
-                const users = await Fcm.find();
-                let tokenSet = new Set();
-                users.forEach((item) => {
-                    if (item.is_driver === true) {
-                        tokenSet.add(item.token);
-                    }
-                });
-                let uniqueTokens = Array.from(tokenSet);
-                console.log(uniqueTokens);
-                const message = {
-                    notification: {
-                        title: "Новый заказ",
-                        body: "Спеши забрать"
-                    },
-                    tokens: uniqueTokens
-                };
-                await admin.messaging()
-                    .sendMulticast(message)
-                    .then(() => {
-                        console.log('was sent')
-                    })
-                    .catch((error) => {
-                        throw error;
-                    });
-                await newOrder.save();
                 const orderSocket = io.connect('http://localhost:3001/order/created');
+                const urgentOrders = io.connect('http://localhost:3001/order/urgent');
                 orderSocket.emit('created', response.order_id);
                 orderSocket.once('response', (data) => {
                     console.log('Получен ответ от сервера:', data);
                 });
-                res.status(200).json(
-                    response,
-                )
+                try {
+                    const now = new Date();
+                    const anotherOrdersResponse = await getAllOpenOrders();
+
+                    if (!anotherOrdersResponse || !anotherOrdersResponse.orders || anotherOrdersResponse.orders.length === 0) {
+                        console.log('Нет новых заказов');
+                        return 'Нет новых заказов';
+                    }
+                    const anotherOrders = anotherOrdersResponse.orders;
+                    const filteredAnotherOrders = anotherOrders.filter(order => {
+                        const orderDateParts = order.order_date.split('.');
+                        const orderDate = new Date(`${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]}`);
+                        orderDate.setDate(orderDate.getDate() + 1);
+                        if (orderDate > now && order.order_status === 'На продаже') {
+                            const orderTime = order.order_time.split(':');
+                            const orderHour = parseInt(orderTime[0]);
+                            const orderMinute = parseInt(orderTime[1]);
+                            if (orderHour > now.getHours() || (orderHour === now.getHours() && orderMinute >= now.getMinutes())) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    });
+                    const allFilteredOrders = [...filteredAnotherOrders];
+                    if (allFilteredOrders.length === 0) {
+                        console.log('Не найдено');
+                    } else {
+                        console.log('Найдено');
+                        const users = await Fcm.find();
+                        let tokenSet = new Set();
+                        users.forEach((item) => {
+                            if (item.is_driver === true) {
+                                tokenSet.add(item.token);
+                            }
+                        });
+                        let uniqueTokens = Array.from(tokenSet);
+                        const message = {
+                            notification: {
+                                title: "УСПЕЙ ВЗЯТЬ!",
+                                body: "Появились срочные заказы"
+                            },
+                            tokens: uniqueTokens
+                        };
+                        await admin.messaging()
+                            .sendMulticast(message)
+                            .catch((error) => {
+                                throw error;
+                            });
+                        urgentOrders.emit('found', allFilteredOrders);
+                    }
+                    const usersUrgent = await Fcm.find({urgent: true, is_driver: true, token: {$exists: true}});
+                    const tokenSetUrgent = new Set(usersUrgent.map(item => item.token));
+                    const uniqueTokensUrgent = Array.from(tokenSetUrgent);
+                    if (uniqueTokensUrgent.length > 0) {
+                        const messageUrgent = {
+                            notification: {
+                                title: "Новый заказ",
+                                body: "Спеши забрать"
+                            },
+                            tokens: uniqueTokensUrgent
+                        };
+                        await admin.messaging().sendMulticast(messageUrgent);
+                        console.log('Срочные уведомления были отправлены');
+                        const delayForNonUrgent = time * 60 * 1000;
+                        await new Promise(resolve => setTimeout(resolve, delayForNonUrgent));
+                        const usersNonUrgent = await Fcm.find({urgent: false, is_driver: true, token: {$exists: true}});
+                        const tokenSetNonUrgent = new Set(usersNonUrgent.map(item => item.token));
+                        const uniqueTokensNonUrgent = Array.from(tokenSetNonUrgent);
+                        if (uniqueTokensNonUrgent.length > 0) {
+                            const messageNonUrgent = {
+                                notification: {
+                                    title: "Новый заказ",
+                                    body: "Есть новый заказ"
+                                },
+                                tokens: uniqueTokensNonUrgent
+                            };
+                            await admin.messaging().sendMulticast(messageNonUrgent);
+                            console.log('Не срочные уведомления были отправлены');
+                            const orderSocket = io.connect('http://localhost:3001/order/created');
+                            orderSocket.emit('created', response.order_id);
+                            orderSocket.once('response', (data) => {
+                                console.log('Получен ответ от сервера:', data);
+                            });
+                            res.status(200).json(response);
+                        } else {
+                            console.log('Нет токенов для несрочных уведомлений. Проход дальше.');
+                            res.status(200).json(response);
+                        }
+                    } else {
+                        console.log('Нет токенов для срочных уведомлений. Проход дальше.');
+                        res.status(200).json(response);
+                    }
+                } catch (error) {
+                    console.error('Ошибка при обработке заказа:', error);
+                    res.status(500).json({error: 'Internal Server Error'});
+                }
             } else {
                 res.status(400).json({
                     message: 'Создание заказа прошло безуспешно.'
-                })
+                });
             }
+
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static aaa = async (req, res, next) => {
+        try {
+            const now = new Date();
+            const anotherOrdersResponse = await getAllOpenOrders();
+
+            if (!anotherOrdersResponse || !anotherOrdersResponse.orders || anotherOrdersResponse.orders.length === 0) {
+                console.log('Нет новых заказов');
+                return 'Нет новых заказов';
+            }
+            const anotherOrders = anotherOrdersResponse.orders;
+            const filteredAnotherOrders = anotherOrders.filter(order => {
+                try {
+                    const orderDateParts = order.order_date.split('.');
+                    const orderDate = new Date(`${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]} ${order.order_time}`);
+                    const timeDifference = orderDate.getTime() - now.getTime();
+                    return timeDifference > 0 && timeDifference <= 2 * 60 * 60 * 1000 && order.order_status === 'На продаже';
+                } catch (error) {
+                    console.error('Ошибка при фильтрации заказов:', error);
+                    return false;
+                }
+            });
+            res.status(200).json(filteredAnotherOrders ? filteredAnotherOrders : 'Не найдено')
         } catch (e) {
             e.status = 401;
             next(e);
@@ -179,11 +252,10 @@ class OrdersControllers {
     static getOrdersForDriver = async (req, res, next) => {
         try {
             const {user_id} = req;
-            const orders = await getAllOpenOrders();
-            const filtered = orders.orders.filter(item => item.order_driver === user_id);
+            const orders = await getOrderByDriver(user_id);
             let response;
-            if (filtered)
-                response = filtered
+            if (orders)
+                response = orders
             else
                 response = [];
             res.status(200).json(response);
@@ -191,13 +263,6 @@ class OrdersControllers {
             e.status = 401;
             next(e);
         }
-    }
-    static asasa = async (req, res, next) => {
-        const {title} = req.query;
-        const newStatus = new OrderStatuses({
-            title: title
-        })
-        await newStatus.save();
     }
     //
     static createTariff = async (req, res, next) => {

@@ -13,7 +13,8 @@ router.post('/clients/make-call', ClientsController.RegisterNumber);
 router.post('/clients/register', ClientsController.RegisterBuyer);
 router.put('/clients/update', uploadFields, ClientsController.UpdateData);
 router.get('/clients/info', ClientsController.getInfo);
-
+//
+router.post('/dispatch/data', DriversController.getDispatch);
 // drivers
 router.post('/drivers/make-call', DriversController.makeCall);
 router.get('/driver/logged', DriversController.isDriverLogged);
@@ -23,6 +24,7 @@ router.post('/upload', uploadFields, DriversController.uploadImage);
 router.get('/drivers/info', DriversController.getData);
 router.post('/drivers/verify', DriversController.registerDriver);
 router.put('/drivers/add-data', DriversController.updateDriver);
+router.put('/drivers/add-data/logged', DriversController.updateDriverLogged);
 router.post('/tariff', OrdersControllers.createTariff);
 
 // dispatchers

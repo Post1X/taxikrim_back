@@ -44,9 +44,7 @@ class AdminController {
             if (drivers.length > 0)
                 return res.status(200).json(drivers);
             else
-                return res.status(304).json({
-                    message: 'Пусто.'
-                })
+                return res.status(200).json([]);
         } catch (e) {
             e.status = 401;
             next(e);

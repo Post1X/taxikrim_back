@@ -48,7 +48,7 @@ class MessagingController {
                 return res.status(200).json({
                     message: 'success'
                 });
-            if (!tokenToCheck) {
+            if (!tokenToCheck && !!token) {
                 const newToken = new Fcm({
                     token: token,
                     user_id: user_id,

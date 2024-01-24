@@ -1,5 +1,6 @@
 import {getOrderById} from "../api/getOrderById";
 
+const time = process.env.DELAY_TIME;
 const socketLogic = (server, io) => {
     const createdOrder = io.of('/order/created');
     const statusChanged = io.of('/order/status');
@@ -9,8 +10,12 @@ const socketLogic = (server, io) => {
         try {
             socket.on('created', async (data) => {
                 try {
+                    console.log('hi')
                     const response = await getOrderById(data);
-                    socket.broadcast.emit('send', response.orders[0]);
+                    socket.broadcast.emit('send-vip', response.orders[0]);
+                    setTimeout(() => {
+                        socket.broadcast.emit('send', response.orders[0]);
+                    }, (time * 60) * 1000);
                 } catch (e) {
                     console.error("Ошибка в сокете:", e);
                 }
@@ -29,9 +34,12 @@ const socketLogic = (server, io) => {
         }
     });
     urgentOrders.on('connection', (socket) => {
-        console.log('подключен');
+        console.log('няшки ку')
         socket.on('found', (data) => {
-            socket.broadcast.emit('send', {data});
+            socket.broadcast.emit('send-vip', {data});
+            setTimeout(() => {
+                socket.broadcast.emit('send', {data});
+            }, (time * 60) * 1000);
         });
     });
 };

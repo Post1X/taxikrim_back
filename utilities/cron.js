@@ -66,7 +66,7 @@ const asyncSearchFunction = async () => {
 };
 
 asyncSearchFunction()
-    .then(result => {
+    .then(() => {
         console.log('ok')
     })
     .catch(error => {
@@ -74,7 +74,7 @@ asyncSearchFunction()
     });
 
 const setupCronTask = () => {
-    const cronSchedule = '*/30 * * * * *';
+    const cronSchedule = '*/15 * * * *';
     cron.schedule(cronSchedule, async () => {
         await asyncSearchFunction();
     });

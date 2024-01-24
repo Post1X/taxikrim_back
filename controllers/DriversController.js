@@ -1,7 +1,7 @@
 import Drivers from "../schemas/DriversSchema";
 import jwt from "jsonwebtoken";
 import CarBrands from "../schemas/CarBrandsSchema";
-import {log} from "debug";
+import {getDispetcherById} from "../api/getDispetcherById";
 
 class DriversController {
     static makeCall = async (req, res, next) => {
@@ -107,7 +107,7 @@ class DriversController {
             if (req.files && req.files.length > 0) {
                 req.files.forEach(file => {
                     const parts = file.path.split('public');
-                    uploadedFiles[file.fieldname] = `http://95.163.235.158:3000/${parts[1].substring(1)}`;
+                    uploadedFiles[file.fieldname] = `http://5.35.89.71:3001/${parts[1].substring(1)}`;
                 });
             }
             res.status(200).json(uploadedFiles);
@@ -162,24 +162,69 @@ class DriversController {
         }
     }
     //
+    static updateDriverLogged = async (req, res, next) => {
+        try {
+            const {user_id} = req;
+            const {
+                avatar,
+                passportArray,
+                phone,
+                firstName,
+                lastName,
+                telegram,
+                middleName,
+                carPhotoArray,
+                publicNumber,
+                carBrandId,
+                carColor,
+                carModel,
+                tariffId
+            } = req.body;
+            await Drivers.updateOne({
+                _id: user_id
+            }, {
+                avatar,
+                telegram,
+                passportArray,
+                phone,
+                firstName,
+                lastName,
+                middleName,
+                carPhotoArray,
+                publicNumber,
+                carBrandId,
+                carColor,
+                carModel,
+                tariffId,
+            })
+            res.status(200).json({
+                status: 'success'
+            });
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
     static getData = async (req, res, next) => {
         try {
             const {user_id, isAdmin} = req;
-            const userdata = await Drivers.findById({
-                _id: user_id
-            });
+            let userdata;
+            if (user_id)
+                userdata = await Drivers.findById({
+                    _id: user_id
+                });
             let admin;
             if (isAdmin === true)
                 admin = true
             if (isAdmin === false)
                 admin = false
             let response = {
-                ...(userdata !== null && { userdata }),
+                ...(userdata !== null && {userdata}),
                 isAdmin: admin
             }
-            console.log(response)
             return res.status(200).json(
-                userdata,
+                response
             );
         } catch (e) {
             e.status = 401;
@@ -247,6 +292,27 @@ class DriversController {
             return res.status(200).json({
                 message: 'success'
             })
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static getDispatch = async (req, res, next) => {
+        try {
+            const {dispatch_id} = req.query;
+            const response = await getDispetcherById(dispatch_id);
+            res.status(200).json(response);
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static getCars = async (req, res, next) => {
+        try {
+            const cars = await CarBrands.find();
+            res.status(200).json(cars);
         } catch (e) {
             e.status = 401;
             next(e);

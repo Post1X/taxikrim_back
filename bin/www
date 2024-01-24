@@ -10,6 +10,7 @@ var debug = require('debug')('autoportal-back:server');
 var http = require('http');
 import Orders from "../schemas/OrdersSchema";
 import setupCronTask from "../utilities/cron";
+import setupSubCronTask from "../utilities/cron-sub";
 
 /**
  * Get port from environment and store in Express.
@@ -41,6 +42,7 @@ app.set('io', io);
  * Normalize a port into a number, string, or false.
  */
 setupCronTask();
+setupSubCronTask();
 function normalizePort(val) {
     var port = parseInt(val, 10);
 

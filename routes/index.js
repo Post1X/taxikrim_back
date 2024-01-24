@@ -8,19 +8,18 @@ import banners from "./banners";
 import financial from "./financial";
 
 import authorization from "../middlewares/validation";
-import sub from "../middlewares/sub";
 
 const express = require('express');
 
 const router = express.Router();
 
-router.use('/users', authorization, sub, users)
-router.use('/message', sub, message)
-router.use('/subscription', sub, authorization, subscription);
+router.use('/users', authorization, users)
+router.use('/message', message)
+router.use('/subscription', authorization, subscription);
 router.use('/banners', authorization, banners);
-router.use('/order', authorization, sub,order);
-router.use('/add-data', sub, adddata);
+router.use('/order', authorization, order);
+router.use('/add-data', adddata);
 router.use('/root', authorization, admin);
-router.use('/financial', authorization, sub, financial);
+router.use('/financial', authorization, financial);
 
 export default router;
