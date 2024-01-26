@@ -10,6 +10,8 @@ import Fcm from "../schemas/FcmSchema";
 import {appCreateOrder} from "../api/appCreateOrder";
 import {getOrderByDriver} from "../api/getOrderByDriver";
 import admin from "firebase-admin";
+import {DateTime} from "luxon";
+
 const time = process.env.DELAY_TIME;
 
 
@@ -62,7 +64,6 @@ class OrdersControllers {
                 try {
                     const now = new Date();
                     const anotherOrdersResponse = await getAllOpenOrders();
-
                     if (!anotherOrdersResponse || !anotherOrdersResponse.orders || anotherOrdersResponse.orders.length === 0) {
                         console.log('Нет новых заказов');
                         return 'Нет новых заказов';
@@ -171,7 +172,6 @@ class OrdersControllers {
         try {
             const now = new Date();
             const anotherOrdersResponse = await getAllOpenOrders();
-
             if (!anotherOrdersResponse || !anotherOrdersResponse.orders || anotherOrdersResponse.orders.length === 0) {
                 console.log('Нет новых заказов');
                 return 'Нет новых заказов';
@@ -207,26 +207,50 @@ class OrdersControllers {
     }
     //
     static getOrders = async (req, res, next) => {
+        const {from, to, tariff, priceFrom, priceTo} = req.query;
         try {
-            const {from, to, tariff, priceFrom, priceTo} = req.query;
+            const {user_id} = req;
+            const user = await Drivers.findOne({
+                _id: user_id
+            });
             let ordersArr = await getAllOpenOrders();
+            console.log(await getAllOpenOrders())
             if (!ordersArr || !ordersArr.orders || !Array.isArray(ordersArr.orders)) {
                 return res.status(200).json({
+                    count_orders: 0,
+                    status: 'true',
                     message: 'Не найдено.'
-                })
+                });
             }
             const orders = ordersArr.orders;
+            const isNewOrder = (order) => {
+                const orderCreateDate = DateTime.fromFormat(order.order_create_date, 'yyyy-MM-dd HH:mm:ss');
+                const targetTimeZone = 'Europe/Moscow';
+                const nowUTC = DateTime.utc();
+                const nowMoscow = nowUTC.setZone(targetTimeZone);
+                console.log(nowMoscow.toFormat('HH:mm:ss'), 'now (Moscow)');
+                console.log(orderCreateDate.toFormat('HH:mm:ss'), 'order');
+                const timeDifference = (Math.round(nowMoscow.diff(orderCreateDate, 'minutes').minutes)) - 60;
+                console.log(timeDifference)
+                const isNew = timeDifference >= 2;
+                console.log(isNew);
+                return isNew;
+            };
+            if (user.subToUrgent === false) {
+                ordersArr = orders.filter(order => isNewOrder(order));
+            }
+            console.log(ordersArr);
             if (from) {
-                ordersArr = orders.filter(order => order.order_start.toLowerCase().includes(from.toLowerCase()));
+                ordersArr = ordersArr.filter(order => order.order_start.toLowerCase().includes(from.toLowerCase()));
             }
             if (to) {
-                ordersArr = orders.filter(order => order.order_end.toLowerCase().includes(to.toLowerCase()));
+                ordersArr = ordersArr.filter(order => order.order_end.toLowerCase().includes(to.toLowerCase()));
             }
             if (tariff) {
-                ordersArr = orders.filter(order => order.order_tarif.toLowerCase() === tariff.toLowerCase());
+                ordersArr = ordersArr.filter(order => order.order_tarif.toLowerCase() === tariff.toLowerCase());
             }
             if (priceFrom || priceTo) {
-                ordersArr = orders.filter(order => {
+                ordersArr = ordersArr.filter(order => {
                     const orderPrice = parseInt(order.order_price);
                     const fromPrice = priceFrom ? parseInt(priceFrom) : null;
                     const toPrice = priceTo ? parseInt(priceTo) : null;
@@ -241,7 +265,13 @@ class OrdersControllers {
                     return true;
                 });
             }
-            return res.status(200).json(ordersArr);
+            const response = {
+                orders: ordersArr,
+                count_orders: ordersArr.length,
+                status: 'true'
+            };
+            return res.status(200).json(response);
+
         } catch (e) {
             e.status = 401;
             next(e);
@@ -378,6 +408,24 @@ class OrdersControllers {
             if (response.error_message === "У водителя еще нет заказов")
                 return res.status(300).json([]);
             res.status(200).json(response);
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static createdOrder = async (req, res, next) => {
+        try {
+            const {id} = req.query;
+            const orderSocket = io.connect('http://localhost:3001/order/created');
+            // const urgentOrders = io.connect('http://localhost:3001/order/urgent');
+            orderSocket.emit('created', id);
+            orderSocket.once('response', (data) => {
+                console.log('Получен ответ от сервера:', data);
+            });
+            res.status(200).json({
+                message: 'success'
+            })
         } catch (e) {
             e.status = 401;
             next(e);

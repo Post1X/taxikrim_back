@@ -3,11 +3,12 @@ import Drivers from "../schemas/DriversSchema";
 class AdminController {
     static approveDriver = async (req, res, next) => {
         try {
-            const {driverId} = req.query;
+            const {driverId, tariffId} = req.query;
             await Drivers.updateOne({
                 _id: driverId
             }, {
-                regComplete: 'complete'
+                regComplete: 'complete',
+                tariffId: tariffId
             })
             res.status(200).json({
                 message: 'success'
@@ -45,6 +46,32 @@ class AdminController {
                 return res.status(200).json(drivers);
             else
                 return res.status(200).json([]);
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static getAllDrivers = async (req, res, next) => {
+        try {
+            const drivers = await Drivers.find();
+            res.status(200).json(drivers);
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static banDriver = async (req, res, next) => {
+        try {
+            const {driverId} = req.query;
+            await Drivers.updateOne(
+                {_id: driverId},
+                {$set: {is_banned: true}}
+            );
+            res.status(200).json({
+                message: 'success'
+            })
         } catch (e) {
             e.status = 401;
             next(e);

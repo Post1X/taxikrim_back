@@ -46,6 +46,9 @@ const DriversSchema = new Schema({
     subscription_until: {
         type: Schema.Types.Date
     },
+    tariffId: {
+        type: Schema.Types.String
+    },
     subscription_status: {
         type: Schema.Types.Boolean,
         default: false
@@ -71,6 +74,9 @@ const DriversSchema = new Schema({
     },
     rejectReason: {
         type: Schema.Types.String
+    },
+    is_banned: {
+        type: Schema.Types.Boolean
     }
 })
 
