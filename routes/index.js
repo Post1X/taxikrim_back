@@ -4,6 +4,7 @@ import order from "./order";
 import adddata from "./adddata";
 import admin from "./admin";
 import message from "./message";
+import transactions from "./transactions";
 import banners from "./banners";
 import financial from "./financial";
 
@@ -15,6 +16,7 @@ const router = express.Router();
 
 router.use('/users', authorization, users)
 router.use('/message', message)
+router.use('/transactions', transactions)
 router.use('/subscription', authorization, subscription);
 router.use('/banners', authorization, banners);
 router.use('/order', authorization, order);

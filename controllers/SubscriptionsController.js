@@ -2,6 +2,7 @@ import Drivers from "../schemas/DriversSchema";
 import {getSubscribeToUrgentUrl, getSubscribeUrl} from "../services/payment";
 import Fcm from "../schemas/FcmSchema";
 import Subscriptions from "../schemas/SubscribitionsSchema";
+import Transactions from "../schemas/TransactionsSchema";
 
 class SubscriptionsController {
     static CreateSubscription = async (req, res, next) => {
@@ -56,6 +57,13 @@ class SubscriptionsController {
             res.status(200).json({
                 message: 'success'
             })
+            const subInfo = Subscriptions.findOne();
+            const newTransaction = new Transactions({
+                type: 'regular',
+                driverId: user_id,
+                date: new Date(),
+                price: subInfo.driver_price
+            })
         } catch (e) {
             e.status = 401;
             next(e);
@@ -90,6 +98,13 @@ class SubscriptionsController {
             }, {
                 urgent: true
             });
+            const subInfo = Subscriptions.findOne();
+            const newTransaction = new Transactions({
+                type: 'urgent',
+                driverId: user_id,
+                date: new Date(),
+                price: subInfo.urgent_price
+            })
             res.status(200).json({
                 message: 'success'
             })

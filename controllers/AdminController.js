@@ -65,9 +65,12 @@ class AdminController {
     static banDriver = async (req, res, next) => {
         try {
             const {driverId} = req.query;
+            const driver = await Drivers.findOne({
+                _id: driverId
+            })
             await Drivers.updateOne(
                 {_id: driverId},
-                {$set: {is_banned: true}}
+                {$set: {is_banned: !driver.is_banned}}
             );
             res.status(200).json({
                 message: 'success'

@@ -76,7 +76,8 @@ const DriversSchema = new Schema({
         type: Schema.Types.String
     },
     is_banned: {
-        type: Schema.Types.Boolean
+        type: Schema.Types.Boolean,
+        default: false
     }
 })
 

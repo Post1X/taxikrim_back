@@ -1,5 +1,6 @@
 import Drivers from "../schemas/DriversSchema";
 import {getPaymentUrl} from "../services/payment";
+import TransactionsSchema from "../schemas/TransactionsSchema";
 
 class FinanceController {
     static getBalance = async (req, res, next) => {
@@ -74,6 +75,37 @@ class FinanceController {
             res.status(200).json({
                 message: 'success'
             })
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static getAllTransactions = async (req, res, next) => {
+        try {
+            const {dateFrom, dateTo} = req.query;
+            let filter = {};
+            if (dateFrom && dateTo) {
+                filter.date = {$gte: new Date(dateFrom), $lte: new Date(dateTo)};
+            } else if (dateFrom) {
+                filter.date = {$gte: new Date(dateFrom)};
+            } else if (dateTo) {
+                filter.date = {$lte: new Date(dateTo)};
+            }
+            const result = await TransactionsSchema.aggregate([
+                {$match: filter},
+                {
+                    $group: {
+                        _id: "$type",
+                        totalAmount: {$sum: "$price"}
+                    }
+                }
+            ]);
+            const totalAmounts = result.reduce((acc, curr) => {
+                acc[curr._id] = curr.totalAmount;
+                return acc;
+            }, {});
+            res.status(200).json(totalAmounts);
         } catch (e) {
             e.status = 401;
             next(e);

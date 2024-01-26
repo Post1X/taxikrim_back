@@ -1,4 +1,3 @@
-import Orders from "../schemas/OrdersSchema";
 import TariffPrices from "../schemas/TariffPrices";
 import {getAllOpenOrders} from "../api/getAllOpenOrders";
 import {driverBuyOrder} from "../api/driverBuyOrder";
@@ -213,6 +212,7 @@ class OrdersControllers {
             const user = await Drivers.findOne({
                 _id: user_id
             });
+            console.log(user_id);
             let ordersArr = await getAllOpenOrders();
             console.log(await getAllOpenOrders())
             if (!ordersArr || !ordersArr.orders || !Array.isArray(ordersArr.orders)) {
@@ -224,33 +224,28 @@ class OrdersControllers {
             }
             const orders = ordersArr.orders;
             const isNewOrder = (order) => {
-                const orderCreateDate = DateTime.fromFormat(order.order_create_date, 'yyyy-MM-dd HH:mm:ss');
-                const targetTimeZone = 'Europe/Moscow';
-                const nowUTC = DateTime.utc();
-                const nowMoscow = nowUTC.setZone(targetTimeZone);
-                console.log(nowMoscow.toFormat('HH:mm:ss'), 'now (Moscow)');
+                const orderCreateDate = DateTime.fromFormat(order.order_create_date, 'yyyy-MM-dd HH:mm:ss', {zone: 'Europe/Moscow'});
+                const nowLocal = DateTime.local();
+                console.log(nowLocal.toFormat('HH:mm:ss'), 'now (Local)');
                 console.log(orderCreateDate.toFormat('HH:mm:ss'), 'order');
-                const timeDifference = (Math.round(nowMoscow.diff(orderCreateDate, 'minutes').minutes)) - 60;
-                console.log(timeDifference)
-                const isNew = timeDifference >= 2;
-                console.log(isNew);
-                return isNew;
+                const minutesDifference = nowLocal.diff(orderCreateDate).as('minutes');
+                console.log(minutesDifference);
+                return Math.abs(minutesDifference) >= 2;
             };
             if (user.subToUrgent === false) {
-                ordersArr = orders.filter(order => isNewOrder(order));
+                ordersArr.orders = ordersArr.orders.filter(order => isNewOrder(order));
             }
-            console.log(ordersArr);
             if (from) {
-                ordersArr = ordersArr.filter(order => order.order_start.toLowerCase().includes(from.toLowerCase()));
+                ordersArr.orders = ordersArr.filter(order => order.order_start.toLowerCase().includes(from.toLowerCase()));
             }
             if (to) {
-                ordersArr = ordersArr.filter(order => order.order_end.toLowerCase().includes(to.toLowerCase()));
+                ordersArr.orders = ordersArr.filter(order => order.order_end.toLowerCase().includes(to.toLowerCase()));
             }
             if (tariff) {
-                ordersArr = ordersArr.filter(order => order.order_tarif.toLowerCase() === tariff.toLowerCase());
+                ordersArr.orders = ordersArr.filter(order => order.order_tarif.toLowerCase() === tariff.toLowerCase());
             }
             if (priceFrom || priceTo) {
-                ordersArr = ordersArr.filter(order => {
+                ordersArr.orders = ordersArr.filter(order => {
                     const orderPrice = parseInt(order.order_price);
                     const fromPrice = priceFrom ? parseInt(priceFrom) : null;
                     const toPrice = priceTo ? parseInt(priceTo) : null;
@@ -266,18 +261,16 @@ class OrdersControllers {
                 });
             }
             const response = {
-                orders: ordersArr,
-                count_orders: ordersArr.length,
+                orders: ordersArr.orders ? ordersArr.orders : [],
+                count_orders: ordersArr.orders ? ordersArr.orders.length : 0,
                 status: 'true'
             };
             return res.status(200).json(response);
-
         } catch (e) {
             e.status = 401;
             next(e);
         }
     }
-
     //
     static getOrdersForDriver = async (req, res, next) => {
         try {
@@ -322,17 +315,19 @@ class OrdersControllers {
             const driver = await Drivers.findOne({
                 _id: user_id
             });
+            const commission = parseInt(order.orders[0].order_commission, 10);
+            const price = Math.round((order.orders[0].order_price * commission) / 100)
             const balance = driver.balance;
-            if ((balance - order.orders[0].order_price) < 0)
+            if ((balance - price) < 0)
                 return res.status(400).json({
-                    message: `Для того чтобы взять заказ, вам не хватает: ${-(balance - order.orders[0].order_price)}₽`
+                    message: `Для того чтобы взять заказ, вам не хватает: ${-(balance - price)}₽`
                 });
             else {
                 const request = await driverBuyOrder(order_id, user_id);
                 await Drivers.updateOne({
                     _id: user_id
                 }, {
-                    balance: (balance - order.orders[0].order_price)
+                    balance: (balance - price)
                 })
                 statusSocket.emit('changed', order);
                 statusSocket.once('response', (data) => {
@@ -350,11 +345,6 @@ class OrdersControllers {
         try {
             const {orderId} = req.query;
             const request = await driverCloseOrder(orderId);
-            await Orders.updateOne({
-                id: orderId
-            }, {
-                status: 'Закрыт'
-            })
             return res.status(200).json(request);
         } catch (e) {
             e.status = 401;
