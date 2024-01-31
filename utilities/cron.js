@@ -3,35 +3,50 @@ import cron from "node-cron";
 import {getAllOpenOrders} from "../api/getAllOpenOrders";
 import admin from "firebase-admin";
 import Fcm from "../schemas/FcmSchema";
+import {DateTime} from "luxon";
+import {getDispetcherById} from "../api/getDispetcherById";
 
 const urgentOrders = io.connect('http://localhost:3001/order/urgent');
 
 const asyncSearchFunction = async () => {
     try {
-        const now = new Date();
-        const anotherOrdersResponse = await getAllOpenOrders();
-
-        if (!anotherOrdersResponse || !anotherOrdersResponse.orders || anotherOrdersResponse.orders.length === 0) {
-            console.log('Нет новых заказов');
-            return 'Нет новых заказов';
+        const nowMoscow = DateTime.local().setZone('Europe/Moscow');
+        const ordersArr = await getAllOpenOrders();
+        if (!ordersArr || !ordersArr.orders || !Array.isArray(ordersArr.orders)) {
+            console.log('Не найдено');
+            return 'Не найдено';
         }
-        const anotherOrders = anotherOrdersResponse.orders;
-        const filteredAnotherOrders = anotherOrders.filter(order => {
+        const filterOrdersByTime = (order) => {
             const orderDateParts = order.order_date.split('.');
-            const orderDate = new Date(`${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]}`);
-            orderDate.setDate(orderDate.getDate() + 1);
-            if (orderDate > now && order.order_status === 'На продаже') {
-                const orderTime = order.order_time.split(':');
-                const orderHour = parseInt(orderTime[0]);
-                const orderMinute = parseInt(orderTime[1]);
-                if (orderHour > now.getHours() || (orderHour === now.getHours() && orderMinute >= now.getMinutes())) {
-                    return true;
-                }
+            const orderDate = DateTime.fromFormat(
+                `${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]} ${order.order_time}`,
+                'yyyy-MM-dd HH:mm',
+                { zone: 'Europe/Moscow' }
+            );
+
+            if (orderDate > nowMoscow && order.order_status === 'На продаже') {
+                const timeDifferenceInHours = orderDate.diff(nowMoscow).as('hours');
+                return timeDifferenceInHours <= 2;
             }
+
             return false;
-        });
-        const allFilteredOrders = [...filteredAnotherOrders];
-        if (allFilteredOrders.length === 0) {
+        };
+
+        const filteredOrders = await Promise.all(ordersArr.orders
+            .filter(order => filterOrdersByTime(order))
+            .map(async order => {
+                const dispatch = await getDispetcherById(order.order_dispatcher);
+                order.order_dispatcher = {
+                    dispatcher_name: dispatch.dispetcher.dispetcher_name,
+                    dispatcher_image: dispatch.dispetcher.dispetcher_image,
+                    dispatcher_phone: dispatch.dispetcher.dispetcher_phone,
+                    dispatcher_email: dispatch.dispetcher.dispetcher_email,
+                    dispatcher_telegram: dispatch.dispetcher.dispetcher_telegram,
+                };
+                return filterOrdersByTime(order) ? order : null;
+            }));
+
+        if (filteredOrders.length === 0) {
             console.log('Не найдено');
             return 'Не найдено';
         } else {
@@ -54,10 +69,12 @@ const asyncSearchFunction = async () => {
             await admin.messaging()
                 .sendMulticast(message)
                 .catch((error) => {
+                    console.error('Ошибка при отправке уведомления:', error);
                     throw error;
                 });
-            urgentOrders.emit('found', allFilteredOrders);
-            return allFilteredOrders;
+
+            urgentOrders.emit('found', filteredOrders);
+            return filteredOrders;
         }
     } catch (error) {
         console.error('Ошибка при поиске:', error);
