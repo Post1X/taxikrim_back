@@ -177,60 +177,63 @@ class OrdersControllers {
             next(e);
         }
     }
-    //
     static getOrders = async (req, res, next) => {
-        const {from, to, tariff, priceFrom, priceTo} = req.query;
+        const { from, to, tariff, priceFrom, priceTo } = req.query;
         try {
             const now = new Date();
-            const {user_id} = req;
+            const { user_id } = req;
             const user = await Drivers.findOne({
                 _id: user_id
             });
-            console.log(user_id);
+
             let ordersArr = await getAllOpenOrders();
+
             if (!ordersArr || !ordersArr.orders || !Array.isArray(ordersArr.orders)) {
                 return res.status(200).json([]);
             }
-            const filteredAnotherOrders = ordersArr.filter(order => {
+            const filteredAnotherOrders = ordersArr.orders.filter(order => {
                 const orderDateParts = order.order_date.split('.');
                 const orderDate = new Date(`${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]}`);
                 orderDate.setDate(orderDate.getDate() + 1);
+
                 if (orderDate > now && order.order_status === 'На продаже') {
                     const orderTime = order.order_time.split(':');
                     const orderHour = parseInt(orderTime[0]);
                     const orderMinute = parseInt(orderTime[1]);
+
                     if (orderHour > now.getHours() || (orderHour === now.getHours() && orderMinute >= now.getMinutes())) {
-                        return false;
+                        return true;
                     }
                 }
-                return true;
+                return false;
             });
-            const isNewOrder = (order) => {
-                const orderCreateDate = DateTime.fromFormat(order.order_create_date, 'yyyy-MM-dd HH:mm:ss', {zone: 'Europe/Moscow'});
-                const nowLocal = DateTime.local();
-                console.log(nowLocal.toFormat('HH:mm:ss'), 'now (Local)');
-                console.log(orderCreateDate.toFormat('HH:mm:ss'), 'order');
-                const minutesDifference = nowLocal.diff(orderCreateDate).as('minutes');
-                console.log(minutesDifference);
-                return Math.abs(minutesDifference) >= 2;
+
+            const filterOrdersByTime = (order) => {
+                const orderDateParts = order.order_date.split('.');
+                const orderDate = new Date(`${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]}`);
+                orderDate.setDate(orderDate.getDate() + 1);
+                const timeDifferenceInHours = (orderDate - now) / (1000 * 60 * 60);
+                return !(timeDifferenceInHours <= 2 && user.subToUrgent === false);
             };
+            ordersArr.orders = filteredAnotherOrders.filter(order => filterOrdersByTime(order));
             if (user.subToUrgent === false) {
-                ordersArr.orders = filteredAnotherOrders.orders.filter(order => isNewOrder(order));
+                ordersArr.orders = ordersArr.orders.filter(order => filterOrdersByTime(order));
             }
             if (from) {
-                ordersArr.orders = filteredAnotherOrders.filter(order => order.order_start.toLowerCase().includes(from.toLowerCase()));
+                ordersArr.orders = ordersArr.filter(order => order.order_start.toLowerCase().includes(from.toLowerCase()));
             }
             if (to) {
-                ordersArr.orders = filteredAnotherOrders.filter(order => order.order_end.toLowerCase().includes(to.toLowerCase()));
+                ordersArr.orders = ordersArr.filter(order => order.order_end.toLowerCase().includes(to.toLowerCase()));
             }
             if (tariff) {
-                ordersArr.orders = filteredAnotherOrders.filter(order => order.order_tarif.toLowerCase() === tariff.toLowerCase());
+                ordersArr.orders = ordersArr.filter(order => order.order_tarif.toLowerCase() === tariff.toLowerCase());
             }
             if (priceFrom || priceTo) {
-                ordersArr.orders = filteredAnotherOrders.filter(order => {
+                ordersArr.orders = ordersArr.filter(order => {
                     const orderPrice = parseInt(order.order_price);
                     const fromPrice = priceFrom ? parseInt(priceFrom) : null;
                     const toPrice = priceTo ? parseInt(priceTo) : null;
+
                     if (fromPrice && toPrice) {
                         return orderPrice >= fromPrice && orderPrice <= toPrice;
                     } else if (fromPrice) {
@@ -252,6 +255,7 @@ class OrdersControllers {
             next(e);
         }
     }
+    //
     //
     static getOrdersForDriver = async (req, res, next) => {
         try {
@@ -353,57 +357,59 @@ class OrdersControllers {
     //
     static getUrgentOrders = async (req, res, next) => {
         try {
-            const {user_id} = req;
+            const { user_id } = req;
             const now = new Date();
             const anotherOrdersResponse = await getAllOpenOrders();
-            if (!anotherOrdersResponse || !anotherOrdersResponse.orders || anotherOrdersResponse.orders.length === 0 || !Array.isArray(anotherOrdersResponse)) {
+
+            if (!anotherOrdersResponse || !anotherOrdersResponse.orders || anotherOrdersResponse.orders.length === 0 || !Array.isArray(anotherOrdersResponse.orders)) {
                 return res.status(200).json([]);
             }
+
             const anotherOrders = anotherOrdersResponse.orders;
-            const filteredAnotherOrders = anotherOrders.filter(order => {
+
+            let filteredAnotherOrders = anotherOrders.filter(order => {
                 const orderDateParts = order.order_date.split('.');
                 const orderDate = new Date(`${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]}`);
                 orderDate.setDate(orderDate.getDate() + 1);
+
                 if (orderDate > now && order.order_status === 'На продаже') {
                     const orderTime = order.order_time.split(':');
                     const orderHour = parseInt(orderTime[0]);
                     const orderMinute = parseInt(orderTime[1]);
+
                     if (orderHour > now.getHours() || (orderHour === now.getHours() && orderMinute >= now.getMinutes())) {
                         return true;
                     }
                 }
                 return false;
             });
-            console.log(anotherOrders);
+
             const user = await Drivers.findOne({
                 _id: user_id
-            })
+            });
+
             const isNewOrder = (order) => {
-                const orderCreateDate = DateTime.fromFormat(order.order_create_date, 'yyyy-MM-dd HH:mm:ss', {zone: 'Europe/Moscow'});
+                const orderCreateDate = DateTime.fromFormat(order.order_create_date, 'yyyy-MM-dd HH:mm:ss', { zone: 'Europe/Moscow' });
                 const nowLocal = DateTime.local();
-                console.log(nowLocal.toFormat('HH:mm:ss'), 'now (Local)');
-                console.log(orderCreateDate.toFormat('HH:mm:ss'), 'order');
                 const minutesDifference = nowLocal.diff(orderCreateDate).as('minutes');
                 return Math.abs(minutesDifference) >= 2;
             };
+
             if (user.subToUrgent === false) {
-                filteredAnotherOrders.orders = filteredAnotherOrders.filter(order => {
-                    const isNew = isNewOrder(order);
-                    console.log(isNew);
-                    return isNew;
-                });
+                filteredAnotherOrders = filteredAnotherOrders.filter(order => isNewOrder(order));
             }
-            const allFilteredOrders = [...filteredAnotherOrders.orders];
+
+            const allFilteredOrders = [...filteredAnotherOrders];
+
             if (allFilteredOrders.length === 0) {
-                res.status(200).json({
+                return res.status(200).json({
                     message: 'Не найдено'
                 });
             } else {
-                res.status(200).json(
-                    allFilteredOrders,
-                    {
-                        isUrgent: true
-                    });
+                return res.status(200).json({
+                    orders: allFilteredOrders,
+                    isUrgent: true
+                });
             }
         } catch (e) {
             e.status = 401;
