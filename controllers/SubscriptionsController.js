@@ -54,15 +54,16 @@ class SubscriptionsController {
                 subscription_status: true,
                 subscription_until: futureDate
             });
-            res.status(200).json({
-                message: 'success'
-            })
-            const subInfo = Subscriptions.findOne();
+            const subInfo = await Subscriptions.findOne();
             const newTransaction = new Transactions({
                 type: 'regular',
                 driverId: user_id,
                 date: new Date(),
                 price: subInfo.driver_price
+            })
+            await newTransaction.save();
+            res.status(200).json({
+                message: 'success'
             })
         } catch (e) {
             e.status = 401;
@@ -98,13 +99,14 @@ class SubscriptionsController {
             }, {
                 urgent: true
             });
-            const subInfo = Subscriptions.findOne();
+            const subInfo = await Subscriptions.findOne();
             const newTransaction = new Transactions({
                 type: 'urgent',
                 driverId: user_id,
                 date: new Date(),
                 price: subInfo.urgent_price
             })
+            await newTransaction.save();
             res.status(200).json({
                 message: 'success'
             })

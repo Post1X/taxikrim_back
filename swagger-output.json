@@ -113,6 +113,23 @@
         }
       }
     },
+    "/users/dispatch/data": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "dispatch_id",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/users/drivers/make-call": {
       "post": {
         "description": "",
@@ -143,6 +160,13 @@
     "/users/driver/logged": {
       "get": {
         "description": "",
+        "parameters": [
+          {
+            "name": "phone",
+            "in": "query",
+            "type": "string"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -294,6 +318,66 @@
         }
       }
     },
+    "/users/drivers/add-data/logged": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "avatar": {
+                  "example": "any"
+                },
+                "passportArray": {
+                  "example": "any"
+                },
+                "phone": {
+                  "example": "any"
+                },
+                "firstName": {
+                  "example": "any"
+                },
+                "lastName": {
+                  "example": "any"
+                },
+                "telegram": {
+                  "example": "any"
+                },
+                "middleName": {
+                  "example": "any"
+                },
+                "carPhotoArray": {
+                  "example": "any"
+                },
+                "publicNumber": {
+                  "example": "any"
+                },
+                "carBrandId": {
+                  "example": "any"
+                },
+                "carColor": {
+                  "example": "any"
+                },
+                "carModel": {
+                  "example": "any"
+                },
+                "tariffId": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/users/tariff": {
       "post": {
         "description": "",
@@ -369,6 +453,28 @@
                 }
               }
             }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/transactions/": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "dateFrom",
+            "in": "query",
+            "type": "string"
+          },
+          {
+            "name": "dateTo",
+            "in": "query",
+            "type": "string"
           }
         ],
         "responses": {
@@ -594,9 +700,6 @@
                 "tariffId": {
                   "example": "any"
                 },
-                "paymentMethod": {
-                  "example": "any"
-                },
                 "countPeople": {
                   "example": "any"
                 },
@@ -622,6 +725,39 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/order/created": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/order/test": {
+      "get": {
+        "description": "",
         "responses": {
           "200": {
             "description": "OK"
@@ -743,6 +879,16 @@
         }
       }
     },
+    "/order/cars": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/order/urgent": {
       "get": {
         "description": "",
@@ -844,6 +990,11 @@
             "name": "driverId",
             "in": "query",
             "type": "string"
+          },
+          {
+            "name": "tariffId",
+            "in": "query",
+            "type": "string"
           }
         ],
         "responses": {
@@ -856,6 +1007,33 @@
     "/root/users": {
       "get": {
         "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/root/drivers/all": {
+      "get": {
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/root/drivers/ban": {
+      "put": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "driverId",
+            "in": "query",
+            "type": "string"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"

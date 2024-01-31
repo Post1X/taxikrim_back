@@ -167,33 +167,6 @@ class OrdersControllers {
         }
     }
     //
-    static aaa = async (req, res, next) => {
-        try {
-            const now = new Date();
-            const anotherOrdersResponse = await getAllOpenOrders();
-            if (!anotherOrdersResponse || !anotherOrdersResponse.orders || anotherOrdersResponse.orders.length === 0) {
-                console.log('Нет новых заказов');
-                return 'Нет новых заказов';
-            }
-            const anotherOrders = anotherOrdersResponse.orders;
-            const filteredAnotherOrders = anotherOrders.filter(order => {
-                try {
-                    const orderDateParts = order.order_date.split('.');
-                    const orderDate = new Date(`${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]} ${order.order_time}`);
-                    const timeDifference = orderDate.getTime() - now.getTime();
-                    return timeDifference > 0 && timeDifference <= 2 * 60 * 60 * 1000 && order.order_status === 'На продаже';
-                } catch (error) {
-                    console.error('Ошибка при фильтрации заказов:', error);
-                    return false;
-                }
-            });
-            res.status(200).json(filteredAnotherOrders ? filteredAnotherOrders : 'Не найдено')
-        } catch (e) {
-            e.status = 401;
-            next(e);
-        }
-    }
-    //
     static getOrder = async (req, res, next) => {
         try {
             const {orderId} = req.query;
@@ -208,21 +181,30 @@ class OrdersControllers {
     static getOrders = async (req, res, next) => {
         const {from, to, tariff, priceFrom, priceTo} = req.query;
         try {
+            const now = new Date();
             const {user_id} = req;
             const user = await Drivers.findOne({
                 _id: user_id
             });
             console.log(user_id);
             let ordersArr = await getAllOpenOrders();
-            console.log(await getAllOpenOrders())
             if (!ordersArr || !ordersArr.orders || !Array.isArray(ordersArr.orders)) {
-                return res.status(200).json({
-                    count_orders: 0,
-                    status: 'true',
-                    message: 'Не найдено.'
-                });
+                return res.status(200).json([]);
             }
-            const orders = ordersArr.orders;
+            const filteredAnotherOrders = ordersArr.filter(order => {
+                const orderDateParts = order.order_date.split('.');
+                const orderDate = new Date(`${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]}`);
+                orderDate.setDate(orderDate.getDate() + 1);
+                if (orderDate > now && order.order_status === 'На продаже') {
+                    const orderTime = order.order_time.split(':');
+                    const orderHour = parseInt(orderTime[0]);
+                    const orderMinute = parseInt(orderTime[1]);
+                    if (orderHour > now.getHours() || (orderHour === now.getHours() && orderMinute >= now.getMinutes())) {
+                        return false;
+                    }
+                }
+                return true;
+            });
             const isNewOrder = (order) => {
                 const orderCreateDate = DateTime.fromFormat(order.order_create_date, 'yyyy-MM-dd HH:mm:ss', {zone: 'Europe/Moscow'});
                 const nowLocal = DateTime.local();
@@ -233,23 +215,22 @@ class OrdersControllers {
                 return Math.abs(minutesDifference) >= 2;
             };
             if (user.subToUrgent === false) {
-                ordersArr.orders = ordersArr.orders.filter(order => isNewOrder(order));
+                ordersArr.orders = filteredAnotherOrders.orders.filter(order => isNewOrder(order));
             }
             if (from) {
-                ordersArr.orders = ordersArr.filter(order => order.order_start.toLowerCase().includes(from.toLowerCase()));
+                ordersArr.orders = filteredAnotherOrders.filter(order => order.order_start.toLowerCase().includes(from.toLowerCase()));
             }
             if (to) {
-                ordersArr.orders = ordersArr.filter(order => order.order_end.toLowerCase().includes(to.toLowerCase()));
+                ordersArr.orders = filteredAnotherOrders.filter(order => order.order_end.toLowerCase().includes(to.toLowerCase()));
             }
             if (tariff) {
-                ordersArr.orders = ordersArr.filter(order => order.order_tarif.toLowerCase() === tariff.toLowerCase());
+                ordersArr.orders = filteredAnotherOrders.filter(order => order.order_tarif.toLowerCase() === tariff.toLowerCase());
             }
             if (priceFrom || priceTo) {
-                ordersArr.orders = ordersArr.filter(order => {
+                ordersArr.orders = filteredAnotherOrders.filter(order => {
                     const orderPrice = parseInt(order.order_price);
                     const fromPrice = priceFrom ? parseInt(priceFrom) : null;
                     const toPrice = priceTo ? parseInt(priceTo) : null;
-
                     if (fromPrice && toPrice) {
                         return orderPrice >= fromPrice && orderPrice <= toPrice;
                     } else if (fromPrice) {
@@ -318,12 +299,24 @@ class OrdersControllers {
             const commission = parseInt(order.orders[0].order_commission, 10);
             const price = Math.round((order.orders[0].order_price * commission) / 100)
             const balance = driver.balance;
-            if ((balance - price) < 0)
+            console.log(order.orders[0].order_status)
+            if ((balance - price) < 0) {
                 return res.status(400).json({
                     message: `Для того чтобы взять заказ, вам не хватает: ${-(balance - price)}₽`
                 });
-            else {
+            } else {
+                if (order && order.orders[0].order_status === 'Выполняется') {
+                    return res.status(400).json({
+                        error_message: 'Заказ уже куплен!'
+                    })
+                }
                 const request = await driverBuyOrder(order_id, user_id);
+                if (request.error_message === 'Заказ уже куплен') {
+                    console.log('hello')
+                    return res.status(400).json({
+                        error_message: 'Заказ уже куплен!'
+                    })
+                }
                 await Drivers.updateOne({
                     _id: user_id
                 }, {
@@ -345,6 +338,12 @@ class OrdersControllers {
         try {
             const {orderId} = req.query;
             const request = await driverCloseOrder(orderId);
+            if (request.error_message === "Вы не можете завершить заказ который еще не начался") {
+                console.log('helloworld')
+                return res.status(400).json({
+                    error_message: "Вы не можете завершить заказ который еще не начался."
+                });
+            }
             return res.status(200).json(request);
         } catch (e) {
             e.status = 401;
@@ -354,12 +353,11 @@ class OrdersControllers {
     //
     static getUrgentOrders = async (req, res, next) => {
         try {
+            const {user_id} = req;
             const now = new Date();
             const anotherOrdersResponse = await getAllOpenOrders();
-            if (!anotherOrdersResponse || !anotherOrdersResponse.orders || anotherOrdersResponse.orders.length === 0) {
-                res.status(200).json({
-                    message: 'Нет заказов на данный момент.'
-                });
+            if (!anotherOrdersResponse || !anotherOrdersResponse.orders || anotherOrdersResponse.orders.length === 0 || !Array.isArray(anotherOrdersResponse)) {
+                return res.status(200).json([]);
             }
             const anotherOrders = anotherOrdersResponse.orders;
             const filteredAnotherOrders = anotherOrders.filter(order => {
@@ -376,14 +374,36 @@ class OrdersControllers {
                 }
                 return false;
             });
-
-            const allFilteredOrders = [...filteredAnotherOrders];
+            console.log(anotherOrders);
+            const user = await Drivers.findOne({
+                _id: user_id
+            })
+            const isNewOrder = (order) => {
+                const orderCreateDate = DateTime.fromFormat(order.order_create_date, 'yyyy-MM-dd HH:mm:ss', {zone: 'Europe/Moscow'});
+                const nowLocal = DateTime.local();
+                console.log(nowLocal.toFormat('HH:mm:ss'), 'now (Local)');
+                console.log(orderCreateDate.toFormat('HH:mm:ss'), 'order');
+                const minutesDifference = nowLocal.diff(orderCreateDate).as('minutes');
+                return Math.abs(minutesDifference) >= 2;
+            };
+            if (user.subToUrgent === false) {
+                filteredAnotherOrders.orders = filteredAnotherOrders.filter(order => {
+                    const isNew = isNewOrder(order);
+                    console.log(isNew);
+                    return isNew;
+                });
+            }
+            const allFilteredOrders = [...filteredAnotherOrders.orders];
             if (allFilteredOrders.length === 0) {
                 res.status(200).json({
                     message: 'Не найдено'
                 });
             } else {
-                res.status(200).json(allFilteredOrders);
+                res.status(200).json(
+                    allFilteredOrders,
+                    {
+                        isUrgent: true
+                    });
             }
         } catch (e) {
             e.status = 401;

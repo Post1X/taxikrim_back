@@ -101,7 +101,18 @@ class FinanceController {
                     }
                 }
             ]);
+            const regular_count = await TransactionsSchema.count({
+                type: "regular"
+            })
+            const urgent_count = await TransactionsSchema.count({
+                type: "urgent"
+            })
             const totalAmounts = result.reduce((acc, curr) => {
+                if (curr._id === "regular") {
+                    acc.regular_count = regular_count;
+                } else if (curr._id === "urgent") {
+                    acc.urgent_count = urgent_count;
+                }
                 acc[curr._id] = curr.totalAmount;
                 return acc;
             }, {});

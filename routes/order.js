@@ -9,7 +9,6 @@ const uploadFields = upload.any();
 
 router.post('/create', OrdersControllers.PlaceOrder);
 router.post('/created', OrdersControllers.createdOrder);
-router.get('/test', OrdersControllers.aaa);
 router.get('/single', OrdersControllers.getOrder);
 router.post('/close', OrdersControllers.closeOrder);
 router.post('/buy', OrdersControllers.buyOrder);

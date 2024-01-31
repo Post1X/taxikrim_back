@@ -27,14 +27,15 @@ const socketLogic = (server, io) => {
     statusChanged.on('connection', async (socket) => {
         try {
             socket.on('changed', async (data) => {
-                statusChanged.emit('send', data);
+                statusChanged.emit('send', data, {
+                    isUrgent: true
+                });
             });
         } catch (e) {
             console.error("Ошибка в сокете:", e);
         }
     });
     urgentOrders.on('connection', (socket) => {
-        console.log('няшки ку')
         socket.on('found', (data) => {
             socket.broadcast.emit('send-vip', {data});
             setTimeout(() => {

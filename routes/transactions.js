@@ -4,6 +4,6 @@ const express = require('express')
 
 const router = express.Router();
 
-router.post('/', FinanceController.getAllTransactions)
+router.get('/', FinanceController.getAllTransactions)
 
 export default router;
