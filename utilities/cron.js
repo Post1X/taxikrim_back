@@ -68,7 +68,8 @@ const asyncSearchFunction = async () => {
                 const urgentMessage = {
                     notification: {
                         title: "УСПЕЙ ВЗЯТЬ!",
-                        body: "Появились срочные заказы"
+                        body: "Появились срочные заказы",
+                        sound: "default"
                     },
                     tokens: urgentTokens
                 };
@@ -84,7 +85,8 @@ const asyncSearchFunction = async () => {
                 const regularMessage = {
                     notification: {
                         title: "Новые заказы",
-                        body: "Появились новые заказы"
+                        body: "Появились новые заказы",
+                        sound: "default"
                     },
                     tokens: regularTokens
                 };
