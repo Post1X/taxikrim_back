@@ -78,6 +78,15 @@ const DriversSchema = new Schema({
     is_banned: {
         type: Schema.Types.Boolean,
         default: false
+    },
+    notification: {
+        type: Schema.Types.Boolean
+    },
+    sound_signal: {
+        type: Schema.Types.Boolean
+    },
+    popup: {
+        type: Schema.Types.Boolean
     }
 })
 

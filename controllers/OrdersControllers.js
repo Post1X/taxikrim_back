@@ -35,7 +35,7 @@ class OrdersControllers {
                 comment,
                 phone_number
             } = req.body;
-            let order = {
+            const order = {
                 orderStart: from,
                 orderFinish: to,
                 orderStartUser: fulladressstart,
@@ -52,140 +52,172 @@ class OrdersControllers {
                 orderTel: phone_number,
                 orderPrice: full_price
             };
+            const orderSocket = io.connect('http://localhost:3001/order/created');
             const response = await appCreateOrder(order);
-            console.log(response);
-            if (response.status === 'true') {
-                const orderSocket = io.connect('http://localhost:3001/order/created');
-                const urgentOrders = io.connect('http://localhost:3001/order/urgent');
-                orderSocket.emit('created', response.order_id);
-                orderSocket.once('response', (data) => {
-                    console.log('Получен ответ от сервера:', data);
-                });
-                try {
-                    const now = new Date();
-                    const anotherOrdersResponse = await getAllOpenOrders();
-                    if (!anotherOrdersResponse || !anotherOrdersResponse.orders || anotherOrdersResponse.orders.length === 0) {
-                        console.log('Нет новых заказов');
-                        return 'Нет новых заказов';
-                    }
-                    const nowMoscow = DateTime.local().setZone('Europe/Moscow');
-                    const ordersArr = await getAllOpenOrders();
-                    if (!ordersArr || !ordersArr.orders || !Array.isArray(ordersArr.orders)) {
-                        console.log('Не найдено');
-                        return 'Не найдено';
-                    }
-                    const filterOrdersByTime = (order) => {
-                        const orderDateParts = order.order_date.split('.');
-                        const orderDate = DateTime.fromFormat(
-                            `${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]} ${order.order_time}`,
-                            'yyyy-MM-dd HH:mm',
-                            {zone: 'Europe/Moscow'}
-                        );
+            orderSocket.emit('created', response.order_id);
 
-                        if (orderDate > nowMoscow && order.order_status === 'На продаже') {
-                            const timeDifferenceInHours = orderDate.diff(nowMoscow).as('hours');
-                            return timeDifferenceInHours <= 2;
-                        }
-                        return false;
-                    };
-                    const filteredOrders = await Promise.all(ordersArr.orders
-                        .filter(order => filterOrdersByTime(order))
-                        .map(async order => {
-                            const dispatch = await getDispetcherById(order.order_dispatcher);
-                            order.order_dispatcher = {
-                                dispatcher_name: dispatch.dispetcher.dispetcher_name,
-                                dispatcher_image: dispatch.dispetcher.dispetcher_image,
-                                dispatcher_phone: dispatch.dispetcher.dispetcher_phone,
-                                dispatcher_email: dispatch.dispetcher.dispetcher_email,
-                                dispatcher_telegram: dispatch.dispetcher.dispetcher_telegram,
-                            };
-                            return filterOrdersByTime(order) ? order : null;
-                        }));
+            const nowMoscow = DateTime.local().setZone('Europe/Moscow');
+            const ordersArr = await getAllOpenOrders();
 
-                    if (filteredOrders.length === 0) {
-                        console.log('Не найдено');
-                        return 'Не найдено';
-                    } else {
-                        console.log('Найдено');
-                        const users = await Fcm.find();
-                        let tokenSet = new Set();
-                        users.forEach((item) => {
-                            if (item.is_driver === true) {
-                                tokenSet.add(item.token);
-                            }
-                        });
-                        let uniqueTokens = Array.from(tokenSet);
-                        const message = {
-                            notification: {
-                                title: "УСПЕЙ ВЗЯТЬ!",
-                                body: "Появились срочные заказы"
-                            },
-                            tokens: uniqueTokens
-                        };
-                        await admin.messaging()
-                            .sendMulticast(message)
-                            .catch((error) => {
-                                throw error;
-                            });
-                        urgentOrders.emit('found', filteredOrders);
-                    }
-                    const usersUrgent = await Fcm.find({urgent: true, is_driver: true, token: {$exists: true}});
-                    const tokenSetUrgent = new Set(usersUrgent.map(item => item.token));
-                    const uniqueTokensUrgent = Array.from(tokenSetUrgent);
-                    if (uniqueTokensUrgent.length > 0) {
-                        const messageUrgent = {
-                            notification: {
-                                title: "Новый заказ",
-                                body: "Спеши забрать"
-                            },
-                            tokens: uniqueTokensUrgent
-                        };
-                        await admin.messaging().sendMulticast(messageUrgent);
-                        console.log('Срочные уведомления были отправлены');
-                        const delayForNonUrgent = time * 60 * 1000;
-                        await new Promise(resolve => setTimeout(resolve, delayForNonUrgent));
-                        const usersNonUrgent = await Fcm.find({urgent: false, is_driver: true, token: {$exists: true}});
-                        const tokenSetNonUrgent = new Set(usersNonUrgent.map(item => item.token));
-                        const uniqueTokensNonUrgent = Array.from(tokenSetNonUrgent);
-                        if (uniqueTokensNonUrgent.length > 0) {
-                            const messageNonUrgent = {
-                                notification: {
-                                    title: "Новый заказ",
-                                    body: "Есть новый заказ"
-                                },
-                                tokens: uniqueTokensNonUrgent
-                            };
-                            await admin.messaging().sendMulticast(messageNonUrgent);
-                            console.log('Не срочные уведомления были отправлены');
-                            const orderSocket = io.connect('http://localhost:3001/order/created');
-                            orderSocket.emit('created', response.order_id);
-                            orderSocket.once('response', (data) => {
-                                console.log('Получен ответ от сервера:', data);
-                            });
-                            res.status(200).json(response);
-                        } else {
-                            console.log('Нет токенов для несрочных уведомлений. Проход дальше.');
-                            res.status(200).json(response);
-                        }
-                    } else {
-                        console.log('Нет токенов для срочных уведомлений. Проход дальше.');
-                        res.status(200).json(response);
-                    }
-                } catch (error) {
-                    console.error('Ошибка при обработке заказа:', error);
-                    res.status(500).json({error: 'Internal Server Error'});
-                }
-            } else {
-                res.status(400).json({
-                    message: 'Создание заказа прошло безуспешно.'
-                });
+            if (!ordersArr || !ordersArr.orders || !Array.isArray(ordersArr.orders)) {
+                console.log('Не найдено');
+                next();
+                return;
             }
+            const filterOrdersByTime = (order) => {
+                const orderDateParts = order.order_date.split('.');
+                const orderDate = DateTime.fromFormat(
+                    `${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]} ${order.order_time}`,
+                    'yyyy-MM-dd HH:mm',
+                    {zone: 'Europe/Moscow'}
+                );
 
-        } catch (e) {
-            e.status = 401;
-            next(e);
+                if (orderDate > nowMoscow && order.order_status === 'На продаже') {
+                    const timeDifferenceInHours = orderDate.diff(nowMoscow).as('hours');
+                    return timeDifferenceInHours <= time;
+                }
+
+                return false;
+            };
+            const filteredOrders = (await Promise.all(
+                ordersArr.orders
+                    .filter(order => filterOrdersByTime(order))
+                    .map(async order => {
+                        const dispatch = await getDispetcherById(order.order_dispatcher);
+                        order.order_dispatcher = {
+                            dispatcher_name: dispatch.dispetcher.dispetcher_name,
+                            dispatcher_image: dispatch.dispetcher.dispetcher_image,
+                            dispatcher_phone: dispatch.dispetcher.dispetcher_phone,
+                            dispatcher_email: dispatch.dispetcher.dispetcher_email,
+                            dispatcher_telegram: dispatch.dispetcher.dispetcher_telegram,
+                        };
+                        return filterOrdersByTime(order) ? order : null;
+                    })
+            )).filter(order => order !== null);
+            if (filteredOrders.length === 0) {
+                const users = await Fcm.find();
+                const tokenSet = new Set();
+                const urgentTokenSet = new Set();
+                const regularTokenSet = new Set();
+                users.forEach((item) => {
+                    if (item.is_driver === true) {
+                        tokenSet.add(item.token);
+                        if (item.subToUrgent) {
+                            urgentTokenSet.add(item.token);
+                        } else {
+                            regularTokenSet.add(item.token);
+                        }
+                    }
+                });
+                const uniqueUrgentTokens = Array.from(urgentTokenSet);
+                const uniqueRegularTokens = Array.from(regularTokenSet);
+                const sendNotification = async (tokens, message) => {
+                    try {
+                        await admin.messaging().sendMulticast({
+                            notification: {
+                                title: message.title,
+                                body: message.body
+                            },
+                            tokens: tokens
+                        });
+                    } catch (error) {
+                        console.error('Ошибка при отправке уведомления:', error);
+                    }
+                };
+                //
+                await sendNotification(uniqueUrgentTokens, {
+                    title: "Новые заказы",
+                    body: "Появились новые заказы",
+                    sound: "default"
+                });
+
+                setTimeout(() => {
+                    (async () => {
+                        await sendNotification(uniqueRegularTokens, {
+                            title: "Новые заказы",
+                            body: "Появились новые заказы",
+                            sound: "default"
+                        });
+                        orderSocket.emit('found', filteredOrders);
+                    })();
+                }, 2 * 60 * 1000);
+                //
+            } else {
+                console.log('Найдено');
+                const users = await Fcm.find();
+                const tokenSet = new Set();
+                const urgentTokenSet = new Set();
+                const regularTokenSet = new Set();
+                users.forEach((item) => {
+                    if (item.is_driver === true) {
+                        tokenSet.add(item.token);
+                        if (item.subToUrgent) {
+                            urgentTokenSet.add(item.token);
+                        } else {
+                            regularTokenSet.add(item.token);
+                        }
+                    }
+                });
+                const uniqueUrgentTokens = Array.from(urgentTokenSet);
+                const uniqueRegularTokens = Array.from(regularTokenSet);
+                const sendNotification = async (tokens, message) => {
+                    try {
+                        await admin.messaging().sendMulticast({
+                            notification: {
+                                title: message.title,
+                                body: message.body
+                            },
+                            tokens: tokens
+                        });
+                    } catch (error) {
+                        console.error('Ошибка при отправке уведомления:', error);
+                    }
+                };
+                await sendNotification(uniqueUrgentTokens, {
+                    title: "Новые заказы",
+                    body: "Появились новые заказы",
+                    sound: "default"
+                });
+
+                setTimeout(() => {
+                    (async () => {
+                        await sendNotification(uniqueRegularTokens, {
+                            title: "Новые заказы",
+                            body: "Появились новые заказы",
+                            sound: "default"
+                        });
+                        orderSocket.emit('found', filteredOrders);
+                    })();
+                }, 2 * 60 * 1000);
+                //
+
+                await sendNotification(uniqueUrgentTokens, {
+                    title: "УСПЕЙ ВЗЯТЬ!",
+                    body: "Появились срочные заказы",
+                    sound: "default"
+                });
+
+                setTimeout(() => {
+                    (async () => {
+                        await sendNotification(uniqueRegularTokens, {
+                            title: "УСПЕЙ ВЗЯТЬ!",
+                            body: "Появились срочные заказы",
+                            sound: "default"
+                        });
+                        orderSocket.emit('found', filteredOrders);
+                    })();
+                }, 2 * 60 * 1000);
+                //
+                return res.status(200).json(filteredOrders);
+            }
+            return res.status(200).json({
+                message: 'success'
+            })
+        } catch (error) {
+            console.error('Ошибка при обработке заказа:', error);
+            return res.status(500).json({error: 'Internal Server Error'});
         }
-    }
+    };
     //
     static getOrder = async (req, res, next) => {
         try {
@@ -199,47 +231,71 @@ class OrdersControllers {
     }
     static getOrders = async (req, res, next) => {
         const {from, to, tariff, priceFrom, priceTo} = req.query;
+        const {user_id} = req;
         try {
+            const isNewOrder = (order) => {
+                const orderCreateDate = DateTime.fromFormat(order.order_create_date, 'yyyy-MM-dd HH:mm:ss', {zone: 'Europe/Moscow'});
+                const nowMoscow = DateTime.local().setZone('Europe/Moscow');
+                const minutesDifference = nowMoscow.diff(orderCreateDate).as('minutes');
+                return Math.abs(minutesDifference) <= 2;
+            };
+
             const nowMoscow = DateTime.local().setZone('Europe/Moscow');
             const ordersArr = await getAllOpenOrders();
 
             if (!ordersArr || !ordersArr.orders || !Array.isArray(ordersArr.orders)) {
                 return res.status(200).json([]);
             }
-            const finalFilteredOrders = await Promise.all(
-                ordersArr.orders
-                    .filter(order => {
-                        const orderDateParts = order.order_date.split('.');
-                        const orderDate = DateTime.fromFormat(
-                            `${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]} ${order.order_time}`,
-                            'yyyy-MM-dd HH:mm',
-                            {zone: 'Europe/Moscow'}
-                        );
-
-                        if (orderDate > nowMoscow && order.order_status === 'На продаже') {
-                            const timeDifferenceInHours = orderDate.diff(nowMoscow).as('hours');
-                            return timeDifferenceInHours > 2;
-                        }
-
-                        return false;
-                    })
-                    .filter(order => (from ? order.order_start === from : true))
-                    .filter(order => (to ? order.order_end === to : true))
-                    .filter(order => (tariff ? order.order_tarif === tariff : true))
-                    .filter(order => {
-                        const numericPrice = parseFloat(order.order_price);
-
-                        if (priceFrom && priceTo) {
-                            return numericPrice >= parseFloat(priceFrom) && numericPrice <= parseFloat(priceTo);
-                        } else if (priceFrom) {
-                            return numericPrice >= parseFloat(priceFrom);
-                        } else if (priceTo) {
-                            return numericPrice <= parseFloat(priceTo);
-                        }
-
-                        return true;
-                    })
-                    .map(async order => {
+            const user = await Drivers.findOne({
+                _id: user_id
+            });
+            const isSubbed = user.subToUrgent;
+            const filterOrdersByTime = async (order) => {
+                const orderDateParts = order.order_date.split('.');
+                const orderDate = DateTime.fromFormat(
+                    `${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]} ${order.order_time}`,
+                    'yyyy-MM-dd HH:mm',
+                    {zone: 'Europe/Moscow'}
+                );
+                if (orderDate > nowMoscow && order.order_status === 'На продаже') {
+                    const timeDifferenceInHours = orderDate.diff(nowMoscow).as('hours');
+                    return timeDifferenceInHours <= time;
+                }
+                return false;
+            };
+            const filterOrdersByPrice = (order) => {
+                const numericPrice = parseFloat(order.order_price);
+                if (priceFrom && priceTo) {
+                    return numericPrice >= parseFloat(priceFrom) && numericPrice <= parseFloat(priceTo);
+                } else if (priceFrom) {
+                    return numericPrice >= parseFloat(priceFrom);
+                } else if (priceTo) {
+                    return numericPrice <= parseFloat(priceTo);
+                }
+                return true;
+            };
+            const filteredOrders = await Promise.all(ordersArr.orders
+                .filter(order => filterOrdersByTime(order))
+                .filter(order => (from ? order.order_start === from : true))
+                .filter(order => (to ? order.order_end === to : true))
+                .filter(order => (tariff ? order.order_tarif === tariff : true))
+                .filter(order => filterOrdersByPrice(order))
+                .map(async (order) => {
+                    const dispatch = await getDispetcherById(order.order_dispatcher);
+                    order.order_dispatcher = {
+                        dispatcher_name: dispatch.dispetcher.dispetcher_name,
+                        dispatcher_image: dispatch.dispetcher.dispetcher_image,
+                        dispatcher_phone: dispatch.dispetcher.dispetcher_phone,
+                        dispatcher_email: dispatch.dispetcher.dispetcher_email,
+                        dispatcher_telegram: dispatch.dispetcher.dispetcher_telegram,
+                    };
+                    return order;
+                }));
+            const finalFilteredOrders = await Promise.all(isSubbed
+                ? filteredOrders
+                : ordersArr.orders
+                    .filter(order => !isNewOrder(order))
+                    .map(async (order) => {
                         const dispatch = await getDispetcherById(order.order_dispatcher);
                         order.order_dispatcher = {
                             dispatcher_name: dispatch.dispetcher.dispetcher_name,
@@ -249,8 +305,7 @@ class OrdersControllers {
                             dispatcher_telegram: dispatch.dispetcher.dispetcher_telegram,
                         };
                         return order;
-                    })
-            );
+                    }));
             const response = {
                 orders: finalFilteredOrders.filter(Boolean) || [],
                 count_orders: finalFilteredOrders.filter(Boolean).length,
@@ -266,18 +321,38 @@ class OrdersControllers {
     static getOrdersForDriver = async (req, res, next) => {
         try {
             const {user_id} = req;
-            const orders = await getOrderByDriver(user_id);
-            let response;
-            if (orders)
-                response = orders
-            else
-                response = [];
-            res.status(200).json(response);
+            const response = await getOrderByDriver(user_id);
+
+            if (response.error_message === "У водителя еще нет заказов") {
+                return res.status(300).json([]);
+            }
+
+            const filteredOrders = response.orders.filter(order => order.order_status === 'Выполняется');
+
+            await Promise.all(filteredOrders.map(async (order) => {
+                const dispatch = await getDispetcherById(order.order_dispatcher);
+                order.order_dispatcher = {
+                    dispatcher_name: dispatch.dispetcher.dispetcher_name,
+                    dispatcher_image: dispatch.dispetcher.dispetcher_image,
+                    dispatcher_phone: dispatch.dispetcher.dispetcher_phone,
+                    dispatcher_email: dispatch.dispetcher.dispetcher_email,
+                    dispatcher_telegram: dispatch.dispetcher.dispetcher_telegram,
+                };
+                return order;
+            }));
+
+            res.status(200).json({
+                status: "true",
+                driver_id: user_id,
+                orders: filteredOrders,
+                count_orders: filteredOrders.length
+            });
         } catch (e) {
             e.status = 401;
             next(e);
         }
     }
+
     //
     static createTariff = async (req, res, next) => {
         try {
@@ -365,47 +440,71 @@ class OrdersControllers {
         const {from, to, tariff, priceFrom, priceTo} = req.query;
         const {user_id} = req;
         try {
+            const isNewOrder = (order) => {
+                const orderCreateDate = DateTime.fromFormat(order.order_create_date, 'yyyy-MM-dd HH:mm:ss', {zone: 'Europe/Moscow'});
+                const nowMoscow = DateTime.local().setZone('Europe/Moscow');
+                const minutesDifference = nowMoscow.diff(orderCreateDate).as('minutes');
+                return Math.abs(minutesDifference) <= 2;
+            };
+
             const nowMoscow = DateTime.local().setZone('Europe/Moscow');
             const ordersArr = await getAllOpenOrders();
 
             if (!ordersArr || !ordersArr.orders || !Array.isArray(ordersArr.orders)) {
                 return res.status(200).json([]);
             }
+            const user = await Drivers.findOne({
+                _id: user_id
+            });
+            const isSubbed = user.subToUrgent;
+            const filterOrdersByTime = (order) => {
+                const orderDateParts = order.order_date.split('.');
+                const orderDate = DateTime.fromFormat(
+                    `${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]} ${order.order_time}`,
+                    'yyyy-MM-dd HH:mm',
+                    {zone: 'Europe/Moscow'}
+                );
+                if (orderDate > nowMoscow && order.order_status === 'На продаже') {
+                    const timeDifferenceInHours = orderDate.diff(nowMoscow).as('hours');
+                    return timeDifferenceInHours <= 2;
+                }
 
-            const finalFilteredOrders = await Promise.all(
-                ordersArr.orders
-                    .filter(order => {
-                        const orderDateParts = order.order_date.split('.');
-                        const orderDate = DateTime.fromFormat(
-                            `${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]} ${order.order_time}`,
-                            'yyyy-MM-dd HH:mm',
-                            {zone: 'Europe/Moscow'}
-                        );
+                return false;
+            };
+            const filterOrdersByPrice = (order) => {
+                const numericPrice = parseFloat(order.order_price);
 
-                        if (orderDate > nowMoscow && order.order_status === 'На продаже') {
-                            const timeDifferenceInHours = orderDate.diff(nowMoscow).as('hours');
-                            return timeDifferenceInHours <= 2;
-                        }
-
-                        return false;
-                    })
-                    .filter(order => (from ? order.order_start === from : true))
-                    .filter(order => (to ? order.order_end === to : true))
-                    .filter(order => (tariff ? order.order_tarif === tariff : true))
-                    .filter(order => {
-                        const numericPrice = parseFloat(order.order_price);
-
-                        if (priceFrom && priceTo) {
-                            return numericPrice >= parseFloat(priceFrom) && numericPrice <= parseFloat(priceTo);
-                        } else if (priceFrom) {
-                            return numericPrice >= parseFloat(priceFrom);
-                        } else if (priceTo) {
-                            return numericPrice <= parseFloat(priceTo);
-                        }
-
-                        return true;
-                    })
-                    .map(async order => {
+                if (priceFrom && priceTo) {
+                    return numericPrice >= parseFloat(priceFrom) && numericPrice <= parseFloat(priceTo);
+                } else if (priceFrom) {
+                    return numericPrice >= parseFloat(priceFrom);
+                } else if (priceTo) {
+                    return numericPrice <= parseFloat(priceTo);
+                }
+                return true;
+            };
+            const filteredOrders = await Promise.all(ordersArr.orders
+                .filter(order => filterOrdersByTime(order))
+                .filter(order => (from ? order.order_start === from : true))
+                .filter(order => (to ? order.order_end === to : true))
+                .filter(order => (tariff ? order.order_tarif === tariff : true))
+                .filter(order => filterOrdersByPrice(order))
+                .map(async (order) => {
+                    const dispatch = await getDispetcherById(order.order_dispatcher);
+                    order.order_dispatcher = {
+                        dispatcher_name: dispatch.dispetcher.dispetcher_name,
+                        dispatcher_image: dispatch.dispetcher.dispetcher_image,
+                        dispatcher_phone: dispatch.dispetcher.dispetcher_phone,
+                        dispatcher_email: dispatch.dispetcher.dispetcher_email,
+                        dispatcher_telegram: dispatch.dispetcher.dispetcher_telegram,
+                    };
+                    return order;
+                }));
+            const finalFilteredOrders = await Promise.all(isSubbed
+                ? filteredOrders
+                : ordersArr.orders
+                    .filter(order => !isNewOrder(order))
+                    .map(async (order) => {
                         const dispatch = await getDispetcherById(order.order_dispatcher);
                         order.order_dispatcher = {
                             dispatcher_name: dispatch.dispetcher.dispetcher_name,
@@ -415,16 +514,13 @@ class OrdersControllers {
                             dispatcher_telegram: dispatch.dispetcher.dispetcher_telegram,
                         };
                         return order;
-                    })
-            );
-
+                    }));
             const response = {
                 orders: finalFilteredOrders.filter(Boolean) || [],
                 count_orders: finalFilteredOrders.filter(Boolean).length,
                 status: 'true'
             };
             return res.status(200).json(response);
-
         } catch (e) {
             e.status = 401;
             next(e);
@@ -437,6 +533,17 @@ class OrdersControllers {
             const response = await getOrderByDriver(user_id);
             if (response.error_message === "У водителя еще нет заказов")
                 return res.status(300).json([]);
+            await Promise.all(response.orders.map(async (order) => {
+                const dispatch = await getDispetcherById(order.order_dispatcher);
+                order.order_dispatcher = {
+                    dispatcher_name: dispatch.dispetcher.dispetcher_name,
+                    dispatcher_image: dispatch.dispetcher.dispetcher_image,
+                    dispatcher_phone: dispatch.dispetcher.dispetcher_phone,
+                    dispatcher_email: dispatch.dispetcher.dispetcher_email,
+                    dispatcher_telegram: dispatch.dispetcher.dispetcher_telegram,
+                };
+                return order;
+            }));
             res.status(200).json(response);
         } catch (e) {
             e.status = 401;

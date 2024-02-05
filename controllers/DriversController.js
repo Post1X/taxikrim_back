@@ -27,6 +27,7 @@ class DriversController {
                     isAdmin: true
                 })
             }
+
             function generateRandomNumberString() {
                 let result = '';
                 for (let i = 0; i < 4; i++) {
@@ -178,7 +179,10 @@ class DriversController {
                 carBrandId,
                 carColor,
                 carModel,
-                tariffId
+                tariffId,
+                sound_signal,
+                notification,
+                popup
             } = req.body;
             await Drivers.updateOne({
                 _id: user_id
@@ -196,6 +200,9 @@ class DriversController {
                 carColor,
                 carModel,
                 tariffId,
+                sound_signal,
+                notification,
+                popup
             })
             res.status(200).json({
                 status: 'success'

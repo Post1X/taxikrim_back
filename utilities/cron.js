@@ -23,15 +23,12 @@ const asyncSearchFunction = async () => {
                 'yyyy-MM-dd HH:mm',
                 { zone: 'Europe/Moscow' }
             );
-
             if (orderDate > nowMoscow && order.order_status === 'На продаже') {
                 const timeDifferenceInHours = orderDate.diff(nowMoscow).as('hours');
                 return timeDifferenceInHours <= 2;
             }
-
             return false;
         };
-
         const filteredOrders = await Promise.all(ordersArr.orders
             .filter(order => filterOrdersByTime(order))
             .map(async order => {
@@ -52,29 +49,60 @@ const asyncSearchFunction = async () => {
         } else {
             console.log('Найдено');
             const users = await Fcm.find();
-            let tokenSet = new Set();
+            let urgentTokenSet = new Set();
+            let regularTokenSet = new Set();
+
             users.forEach((item) => {
                 if (item.is_driver === true) {
-                    tokenSet.add(item.token);
+                    if (item.subToUrgent) {
+                        urgentTokenSet.add(item.token);
+                    } else {
+                        regularTokenSet.add(item.token);
+                    }
                 }
             });
-            let uniqueTokens = Array.from(tokenSet);
-            const message = {
-                notification: {
-                    title: "УСПЕЙ ВЗЯТЬ!",
-                    body: "Появились срочные заказы"
-                },
-                tokens: uniqueTokens
-            };
-            await admin.messaging()
-                .sendMulticast(message)
-                .catch((error) => {
+            const urgentTokens = Array.from(urgentTokenSet);
+            const regularTokens = Array.from(regularTokenSet);
+
+            const sendUrgentNotification = async () => {
+                const urgentMessage = {
+                    notification: {
+                        title: "УСПЕЙ ВЗЯТЬ!",
+                        body: "Появились срочные заказы"
+                    },
+                    tokens: urgentTokens
+                };
+                try {
+                    await admin.messaging().sendMulticast(urgentMessage);
+                } catch (error) {
                     console.error('Ошибка при отправке уведомления:', error);
                     throw error;
-                });
+                }
+            };
+
+            const sendRegularNotification = async () => {
+                const regularMessage = {
+                    notification: {
+                        title: "Новые заказы",
+                        body: "Появились новые заказы"
+                    },
+                    tokens: regularTokens
+                };
+                try {
+                    await admin.messaging().sendMulticast(regularMessage);
+                } catch (error) {
+                    console.error('Ошибка при отправке уведомления:', error);
+                    throw error;
+                }
+            };
+            await sendUrgentNotification();
+            setTimeout(async () => {
+                await sendRegularNotification();
+            }, 2 * 60 * 1000);
 
             urgentOrders.emit('found', filteredOrders);
             return filteredOrders;
+
         }
     } catch (error) {
         console.error('Ошибка при поиске:', error);

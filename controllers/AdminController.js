@@ -55,7 +55,7 @@ class AdminController {
     static getAllDrivers = async (req, res, next) => {
         try {
             const drivers = await Drivers.find({
-                regComplete: 'verifying'
+                regComplete: 'complete'
             });
             res.status(200).json(drivers);
         } catch (e) {
