@@ -12,7 +12,7 @@ import admin from "firebase-admin";
 import {DateTime} from "luxon";
 import {getDispetcherById} from "../api/getDispetcherById";
 
-const time = process.env.DELAY_TIME;
+const timeDelay = process.env.DELAY_TIME;
 
 
 class OrdersControllers {
@@ -35,6 +35,10 @@ class OrdersControllers {
                 comment,
                 phone_number
             } = req.body;
+            console.log(isBagage,
+                isBaby,
+                isBuster,
+                isAnimal);
             const order = {
                 orderStart: from,
                 orderFinish: to,
@@ -53,12 +57,12 @@ class OrdersControllers {
                 orderPrice: full_price
             };
             const orderSocket = io.connect('http://localhost:3001/order/created');
+            const urgentSocket = io.connect('http://localhost:3001/order/urgent');
             const response = await appCreateOrder(order);
+            console.log(response);
             orderSocket.emit('created', response.order_id);
-
             const nowMoscow = DateTime.local().setZone('Europe/Moscow');
             const ordersArr = await getAllOpenOrders();
-
             if (!ordersArr || !ordersArr.orders || !Array.isArray(ordersArr.orders)) {
                 console.log('Не найдено');
                 next();
@@ -71,12 +75,10 @@ class OrdersControllers {
                     'yyyy-MM-dd HH:mm',
                     {zone: 'Europe/Moscow'}
                 );
-
                 if (orderDate > nowMoscow && order.order_status === 'На продаже') {
                     const timeDifferenceInHours = orderDate.diff(nowMoscow).as('hours');
-                    return timeDifferenceInHours <= time;
+                    return timeDifferenceInHours <= timeDelay;
                 }
-
                 return false;
             };
             const filteredOrders = (await Promise.all(
@@ -102,7 +104,7 @@ class OrdersControllers {
                 users.forEach((item) => {
                     if (item.is_driver === true) {
                         tokenSet.add(item.token);
-                        if (item.subToUrgent) {
+                        if (item.urgent === true) {
                             urgentTokenSet.add(item.token);
                         } else {
                             regularTokenSet.add(item.token);
@@ -130,7 +132,6 @@ class OrdersControllers {
                     body: "Появились новые заказы",
                     sound: "default"
                 });
-
                 setTimeout(() => {
                     (async () => {
                         await sendNotification(uniqueRegularTokens, {
@@ -138,9 +139,8 @@ class OrdersControllers {
                             body: "Появились новые заказы",
                             sound: "default"
                         });
-                        orderSocket.emit('found', filteredOrders);
                     })();
-                }, 2 * 60 * 1000);
+                }, 60000);
                 //
             } else {
                 console.log('Найдено');
@@ -174,29 +174,10 @@ class OrdersControllers {
                     }
                 };
                 await sendNotification(uniqueUrgentTokens, {
-                    title: "Новые заказы",
-                    body: "Появились новые заказы",
-                    sound: "default"
-                });
-
-                setTimeout(() => {
-                    (async () => {
-                        await sendNotification(uniqueRegularTokens, {
-                            title: "Новые заказы",
-                            body: "Появились новые заказы",
-                            sound: "default"
-                        });
-                        orderSocket.emit('found', filteredOrders);
-                    })();
-                }, 2 * 60 * 1000);
-                //
-
-                await sendNotification(uniqueUrgentTokens, {
                     title: "УСПЕЙ ВЗЯТЬ!",
                     body: "Появились срочные заказы",
                     sound: "default"
                 });
-
                 setTimeout(() => {
                     (async () => {
                         await sendNotification(uniqueRegularTokens, {
@@ -204,11 +185,12 @@ class OrdersControllers {
                             body: "Появились срочные заказы",
                             sound: "default"
                         });
-                        orderSocket.emit('found', filteredOrders);
                     })();
-                }, 2 * 60 * 1000);
-                //
-                return res.status(200).json(filteredOrders);
+                }, 60000);
+                await urgentSocket.emit('found', filteredOrders);
+                return res.status(200).json({
+                    message: 'success'
+                });
             }
             return res.status(200).json({
                 message: 'success'
@@ -466,7 +448,7 @@ class OrdersControllers {
                 );
                 if (orderDate > nowMoscow && order.order_status === 'На продаже') {
                     const timeDifferenceInHours = orderDate.diff(nowMoscow).as('hours');
-                    return timeDifferenceInHours <= 2;
+                    return timeDifferenceInHours <= timeDelay;
                 }
 
                 return false;
@@ -555,7 +537,6 @@ class OrdersControllers {
         try {
             const {id} = req.query;
             const orderSocket = io.connect('http://localhost:3001/order/created');
-            // const urgentOrders = io.connect('http://localhost:3001/order/urgent');
             orderSocket.emit('created', id);
             orderSocket.once('response', (data) => {
                 console.log('Получен ответ от сервера:', data);

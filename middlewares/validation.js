@@ -20,6 +20,7 @@ const authorization = async (req, res, next) => {
         const {JWT_SECRET} = process.env;
         const token = authorization.replace('Bearer ', '');
         const userInfo = jwt.verify(token, JWT_SECRET);
+        console.log(userInfo);
         req.user_id = userInfo.user_id;
         if (userInfo.isAdmin) {
             req.isAdmin = userInfo.isAdmin

@@ -14,9 +14,9 @@ const express = require('express');
 
 const router = express.Router();
 
-router.use('/users', authorization, users)
-router.use('/message', message)
-router.use('/transactions', transactions)
+router.use('/users', authorization, users);
+router.use('/message', authorization, message);
+router.use('/transactions', transactions);
 router.use('/subscription', authorization, subscription);
 router.use('/banners', authorization, banners);
 router.use('/order', authorization, order);

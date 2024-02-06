@@ -70,7 +70,6 @@ class DriversController {
         try {
             const JWT_SECRET = process.env.JWT_SECRET;
             const {phone, code} = req.body;
-            console.log(phone, code)
             const client = await Drivers.findOne({
                 phone
             });

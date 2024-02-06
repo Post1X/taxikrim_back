@@ -1,4 +1,5 @@
 import {getOrderById} from "../api/getOrderById";
+import {getDispetcherById} from "../api/getDispetcherById";
 
 const time = process.env.DELAY_TIME;
 const socketLogic = (server, io) => {
@@ -10,11 +11,14 @@ const socketLogic = (server, io) => {
         try {
             socket.on('created', async (data) => {
                 try {
-                    console.log('hi')
                     const response = await getOrderById(data);
                     socket.broadcast.emit('send-vip', response.orders[0]);
-                    setTimeout(() => {
-                        socket.broadcast.emit('send', response.orders[0]);
+                    setTimeout(async () => {
+                        const responseToCheck = await getOrderById(data);
+                        if (responseToCheck.orders[0].order_status === 'На продаже')
+                            socket.broadcast.emit('send', response.orders[0]);
+                        else
+                            console.log('Hello world')
                     }, (time * 60) * 1000);
                 } catch (e) {
                     console.error("Ошибка в сокете:", e);
@@ -36,10 +40,20 @@ const socketLogic = (server, io) => {
         }
     });
     urgentOrders.on('connection', (socket) => {
-        socket.on('found', (data) => {
+        socket.on('found', async (data) => {
+            let bigArr = [];
             socket.broadcast.emit('send-vip', {data});
-            setTimeout(() => {
-                socket.broadcast.emit('send', {data});
+            setTimeout(async () => {
+                await Promise.all(data.map(async (item) => {
+                    const order = await getOrderById(item.order_id);
+                    if (order.orders[0].order_status === 'На продаже') {
+                        const orderWithDispatcher = {...order.orders[0]};
+                        const dispatcher = await getDispetcherById(order.orders[0].order_dispatcher);
+                        orderWithDispatcher.order_dispatcher = dispatcher.dispetcher;
+                        bigArr.push(orderWithDispatcher);
+                    }
+                }));
+                socket.broadcast.emit('send', {bigArr});
             }, (time * 60) * 1000);
         });
     });

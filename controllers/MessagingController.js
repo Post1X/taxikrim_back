@@ -39,20 +39,25 @@ class MessagingController {
     static generateTokenForUser = async (req, res, next) => {
         try {
             const {user_id} = req;
-            const {is_driver, token} = req.body;
+            const {is_driver, token, is_vip} = req.body;
             const tokenToCheck = await Fcm.findOne({
-                token: token,
                 user_id: user_id
             });
-            if (tokenToCheck)
+            if (tokenToCheck) {
+                await Fcm.updateOne({
+                    user_id: user_id,
+                    urgent: is_vip
+                })
                 return res.status(200).json({
                     message: 'success'
                 });
+            }
             if (!tokenToCheck && !!token) {
                 const newToken = new Fcm({
                     token: token,
                     user_id: user_id,
-                    is_driver: is_driver
+                    is_driver: is_driver,
+                    urgent: is_vip
                 });
                 await newToken.save().then(res.status(200).json({
                     message: 'success'
