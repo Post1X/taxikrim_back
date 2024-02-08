@@ -21,7 +21,7 @@ const asyncSearchFunction = async () => {
             const orderDate = DateTime.fromFormat(
                 `${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]} ${order.order_time}`,
                 'yyyy-MM-dd HH:mm',
-                { zone: 'Europe/Moscow' }
+                {zone: 'Europe/Moscow'}
             );
             if (orderDate > nowMoscow && order.order_status === 'На продаже') {
                 const timeDifferenceInHours = orderDate.diff(nowMoscow).as('hours');
@@ -54,7 +54,7 @@ const asyncSearchFunction = async () => {
 
             users.forEach((item) => {
                 if (item.is_driver === true) {
-                    if (item.subToUrgent) {
+                    if (item.urgent === true) {
                         urgentTokenSet.add(item.token);
                     } else {
                         regularTokenSet.add(item.token);
@@ -63,7 +63,6 @@ const asyncSearchFunction = async () => {
             });
             const urgentTokens = Array.from(urgentTokenSet);
             const regularTokens = Array.from(regularTokenSet);
-
             const sendUrgentNotification = async () => {
                 const urgentMessage = {
                     notification: {
@@ -97,11 +96,13 @@ const asyncSearchFunction = async () => {
                     throw error;
                 }
             };
-            await sendUrgentNotification();
-            setTimeout(async () => {
-                await sendRegularNotification();
-            }, 2 * 60 * 1000);
-
+            if (urgentTokens.length > 0)
+                await sendUrgentNotification();
+            if (regularTokens.length > 0) {
+                setTimeout(async () => {
+                    await sendRegularNotification();
+                }, 2 * 60 * 1000);
+            }
             urgentOrders.emit('found', filteredOrders);
             return filteredOrders;
 

@@ -15,6 +15,9 @@ const FcmSchema = new Schema({
     urgent: {
         type: Schema.Types.Boolean,
         default: false
+    },
+    device_id: {
+        type: Schema.Types.String
     }
 })
 

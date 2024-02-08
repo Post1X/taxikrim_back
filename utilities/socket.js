@@ -13,13 +13,15 @@ const socketLogic = (server, io) => {
                 try {
                     const response = await getOrderById(data);
                     socket.broadcast.emit('send-vip', response.orders[0]);
+                    console.log('send-vip')
                     setTimeout(async () => {
+                        console.log('send')
                         const responseToCheck = await getOrderById(data);
                         if (responseToCheck.orders[0].order_status === 'На продаже')
                             socket.broadcast.emit('send', response.orders[0]);
                         else
                             console.log('Hello world')
-                    }, (time * 60) * 1000);
+                    }, (60) * 1000);
                 } catch (e) {
                     console.error("Ошибка в сокете:", e);
                 }
