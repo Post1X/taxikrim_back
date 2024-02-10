@@ -25,6 +25,7 @@ class OrdersControllers {
                 fulladressstart,
                 date,
                 time,
+                additional,
                 full_price,
                 tariffId,
                 countPeople,
@@ -35,6 +36,7 @@ class OrdersControllers {
                 comment,
                 phone_number
             } = req.body;
+            const addString = additional.join('|');
             console.log(isBagage,
                 isBaby,
                 isBuster,
@@ -48,10 +50,11 @@ class OrdersControllers {
                 orderPeeple: countPeople,
                 orderBags: isBagage,
                 orderDate: date,
-                order_buster: isBuster,
-                order_animals: isAnimal,
-                order_baby_chair: isBaby,
+                order_buster: isBuster + "",
+                order_animals: isAnimal + "",
+                order_baby_chair: isBaby + "",
                 orderTime: time,
+                additional: addString,
                 orderComment: comment,
                 orderTel: phone_number,
                 orderPrice: full_price
@@ -102,12 +105,27 @@ class OrdersControllers {
                 const urgentTokenSet = new Set();
                 const regularTokenSet = new Set();
                 users.forEach((item) => {
-                    if (item.is_driver === true) {
-                        tokenSet.add(item.token);
-                        if (item.urgent === true) {
-                            urgentTokenSet.add(item.token);
-                        } else {
-                            regularTokenSet.add(item.token);
+                    if (item.is_driver === true && item.notification === true) {
+                        const isTariffCompatible = (driverTariff, orderTariff) => {
+                            switch (driverTariff) {
+                                case "Стандарт":
+                                    return orderTariff === "Стандарт";
+                                case "Комфорт":
+                                    return orderTariff === "Стандарт" || orderTariff === "Комфорт";
+                                case "Бизнес":
+                                    return orderTariff === "Стандарт" || orderTariff === "Комфорт" || orderTariff === "Бизнес";
+                                case "Минивэн":
+                                    return true;
+                                default:
+                                    return false;
+                            }
+                        };
+                        if (isTariffCompatible(item.user_tariff, tariffId)) {
+                            if (item.urgent === true) {
+                                urgentTokenSet.add(item.token);
+                            } else {
+                                regularTokenSet.add(item.token);
+                            }
                         }
                     }
                 });
@@ -156,12 +174,27 @@ class OrdersControllers {
                 const urgentTokenSet = new Set();
                 const regularTokenSet = new Set();
                 users.forEach((item) => {
-                    if (item.is_driver === true) {
-                        tokenSet.add(item.token);
-                        if (item.urgent === true) {
-                            urgentTokenSet.add(item.token);
-                        } else {
-                            regularTokenSet.add(item.token);
+                    if (item.is_driver === true && item.notification === true) {
+                        const isTariffCompatible = (driverTariff, orderTariff) => {
+                            switch (driverTariff) {
+                                case "Стандарт":
+                                    return orderTariff === "Стандарт";
+                                case "Комфорт":
+                                    return orderTariff === "Стандарт" || orderTariff === "Комфорт";
+                                case "Бизнес":
+                                    return orderTariff === "Стандарт" || orderTariff === "Комфорт" || orderTariff === "Бизнес";
+                                case "Минивэн":
+                                    return true;
+                                default:
+                                    return false;
+                            }
+                        };
+                        if (isTariffCompatible(item.user_tariff, tariffId)) {
+                            if (item.urgent === true) {
+                                urgentTokenSet.add(item.token);
+                            } else {
+                                regularTokenSet.add(item.token);
+                            }
                         }
                     }
                 });
@@ -225,9 +258,13 @@ class OrdersControllers {
         }
     }
     static getOrders = async (req, res, next) => {
-        const {from, to, tariff, priceFrom, priceTo} = req.query;
+        const {from, to, tariff, priceFrom, priceTo, dateFrom, dateTo} = req.query;
         const {user_id} = req;
         try {
+            const driver = await Drivers.findOne({
+                _id: user_id
+            });
+            const tariffId = driver.tariffId;
             const isNewOrder = (order) => {
                 const orderCreateDate = DateTime.fromFormat(order.order_create_date, 'yyyy-MM-dd HH:mm:ss', {zone: 'Europe/Moscow'});
                 const nowMoscow = DateTime.local().setZone('Europe/Moscow');
@@ -271,6 +308,22 @@ class OrdersControllers {
             const timeFilterResults = await Promise.all(
                 ordersArr.orders.map(async order => await filterOrdersByTime(order))
             );
+
+            async function filterOrdersByDriverTariff(order, driverTariff) {
+                switch (driverTariff) {
+                    case "Стандарт":
+                        return order.order_tarif === "Стандарт";
+                    case "Комфорт":
+                        return order.order_tarif === "Стандарт" || order.order_tarif === "Комфорт";
+                    case "Бизнес":
+                        return order.order_tarif === "Стандарт" || order.order_tarif === "Комфорт" || order.order_tarif === "Бизнес";
+                    case "Минивэн":
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+
             const filteredOrders = await Promise.all(
                 ordersArr.orders
                     .filter((order, index) => timeFilterResults[index])
@@ -278,6 +331,22 @@ class OrdersControllers {
                     .filter(order => !to || order.order_end === to)
                     .filter(order => !tariff || order.order_tarif === tariff)
                     .filter(order => filterOrdersByPrice(order))
+                    .filter(order => {
+                        const orderCreateDate = DateTime.fromFormat(order.order_create_date.split(' ')[0], 'yyyy-MM-dd', {zone: 'Europe/Moscow'});
+                        if (dateFrom && !dateTo) {
+                            const dateFromDT = DateTime.fromISO(dateFrom, {zone: 'Europe/Moscow'});
+                            return orderCreateDate >= dateFromDT.startOf('day');
+                        } else if (!dateFrom && dateTo) {
+                            const dateToDT = DateTime.fromISO(dateTo, {zone: 'Europe/Moscow'});
+                            return orderCreateDate <= dateToDT.endOf('day');
+                        } else if (dateFrom && dateTo) {
+                            const dateFromDT = DateTime.fromISO(dateFrom, {zone: 'Europe/Moscow'});
+                            const dateToDT = DateTime.fromISO(dateTo, {zone: 'Europe/Moscow'});
+                            return orderCreateDate >= dateFromDT.startOf('day') && orderCreateDate <= dateToDT.endOf('day');
+                        }
+                        return true;
+                    })
+                    .filter(order => filterOrdersByDriverTariff(order, tariffId))
                     .filter(order => isSubbed ? true : isNewOrder(order) === false)
                     .map(async (order) => {
                         const dispatch = await getDispetcherById(order.order_dispatcher);
@@ -424,12 +493,31 @@ class OrdersControllers {
         const {from, to, tariff, priceFrom, priceTo} = req.query;
         const {user_id} = req;
         try {
+            const driver = await Drivers.findOne({
+                _id: user_id
+            });
+            const tariffId = driver.tariffId;
             const isNewOrder = (order) => {
                 const orderCreateDate = DateTime.fromFormat(order.order_create_date, 'yyyy-MM-dd HH:mm:ss', {zone: 'Europe/Moscow'});
                 const nowMoscow = DateTime.local().setZone('Europe/Moscow');
                 const minutesDifference = nowMoscow.diff(orderCreateDate).as('minutes');
                 return Math.abs(minutesDifference) <= 2;
             };
+
+            async function filterOrdersByDriverTariff(order, driverTariff) {
+                switch (driverTariff) {
+                    case "Стандарт":
+                        return order.order_tarif === "Стандарт";
+                    case "Комфорт":
+                        return order.order_tarif === "Стандарт" || order.order_tarif === "Комфорт";
+                    case "Бизнес":
+                        return order.order_tarif === "Стандарт" || order.order_tarif === "Комфорт" || order.order_tarif === "Бизнес";
+                    case "Минивэн":
+                        return true;
+                    default:
+                        return false;
+                }
+            }
 
             const nowMoscow = DateTime.local().setZone('Europe/Moscow');
             const ordersArr = await getAllOpenOrders();
@@ -478,6 +566,8 @@ class OrdersControllers {
                     .filter(order => !tariff || order.order_tarif === tariff)
                     .filter(order => filterOrdersByPrice(order))
                     .filter(order => isSubbed ? true : isNewOrder(order) === false)
+                    .filter(order => tariff === order.order_tarif ? order : null)
+                    .filter(order => filterOrdersByDriverTariff(order, tariffId))
                     .map(async (order) => {
                         const dispatch = await getDispetcherById(order.order_dispatcher);
                         if (dispatch && dispatch.dispetcher) {

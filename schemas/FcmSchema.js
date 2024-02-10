@@ -18,6 +18,12 @@ const FcmSchema = new Schema({
     },
     device_id: {
         type: Schema.Types.String
+    },
+    user_tariff: {
+        type: Schema.Types.String
+    },
+    notification: {
+        type: Schema.Types.Boolean
     }
 })
 

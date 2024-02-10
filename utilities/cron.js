@@ -51,13 +51,14 @@ const asyncSearchFunction = async () => {
             const users = await Fcm.find();
             let urgentTokenSet = new Set();
             let regularTokenSet = new Set();
-
             users.forEach((item) => {
                 if (item.is_driver === true) {
                     if (item.urgent === true) {
-                        urgentTokenSet.add(item.token);
+                        if (item.notification === true)
+                            urgentTokenSet.add(item.token);
                     } else {
-                        regularTokenSet.add(item.token);
+                        if (item.notification === true)
+                            regularTokenSet.add(item.token);
                     }
                 }
             });
