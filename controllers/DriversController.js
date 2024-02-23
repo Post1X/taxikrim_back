@@ -2,6 +2,8 @@ import Drivers from "../schemas/DriversSchema";
 import jwt from "jsonwebtoken";
 import CarBrands from "../schemas/CarBrandsSchema";
 import {getDispetcherById} from "../api/getDispetcherById";
+import Fcm from "../schemas/FcmSchema";
+import DeletedDrivers from "../schemas/DeletedDriversSchema";
 
 class DriversController {
     static makeCall = async (req, res, next) => {
@@ -27,7 +29,6 @@ class DriversController {
                     isAdmin: true
                 })
             }
-
             function generateRandomNumberString() {
                 let result = '';
                 for (let i = 0; i < 4; i++) {
@@ -44,7 +45,8 @@ class DriversController {
                 const newClient = new Drivers({
                     phone: phone,
                     code: code,
-                    regComplete: 'in_progress'
+                    regComplete: 'in_progress',
+                    notification: false
                 });
                 await newClient.save();
             }
@@ -55,7 +57,6 @@ class DriversController {
                     code: code
                 })
             }
-            ;
             res.status(200).json({
                 success: true,
                 code: code
@@ -83,6 +84,7 @@ class DriversController {
                     phone: phone
                 }, {
                     code: null,
+                    lastLoginTime: new Date()
                 });
                 const token = jwt.sign({
                     phone: phone,
@@ -183,6 +185,16 @@ class DriversController {
                 notification,
                 popup
             } = req.body;
+            if (notification === true || notification === false) {
+                await Fcm.update({
+                    user_id: user_id
+                }, {
+                    notification: notification
+                })
+            } else
+                res.status(400).json({
+                    error_message: 'Incorrect property: notification'
+                })
             await Drivers.updateOne({
                 _id: user_id
             }, {
@@ -292,8 +304,57 @@ class DriversController {
     static deleteAccount = async (req, res, next) => {
         try {
             const {user_id} = req;
+            const driver = await Drivers.findOne({
+                _id: user_id
+            });
+            const newSchema = new DeletedDrivers({
+                avatar: driver.avatar,
+                code: driver.code,
+                passportArray: driver.passportArray,
+                phone: driver.phone,
+                firstName: driver.firstName,
+                lastName: driver.lastName,
+                middleName: driver.middleName,
+                carPhotoArray: driver.carPhotoArray,
+                telegram: driver.telegram,
+                publicNumber: driver.publicNumber,
+                carBrandId: driver.carBrandId,
+                carColor: driver.carColor,
+                carModel: driver.carModel,
+                subscription_until: driver.subscription_until,
+                tariffId: driver.tariffId,
+                subscription_status: driver.subscription_status,
+                regComplete: driver.regComplete,
+                fcm_token: driver.fcm_token,
+                balance: driver.balance,
+                subToUrgent: driver.subToUrgent,
+                subToUrgentDate: driver.subToUrgentDate,
+                rejectReason: driver.rejectReason,
+                is_banned: driver.is_banned,
+                notification: driver.notification,
+                sound_signal: driver.sound_signal,
+                popup: driver.popup,
+                deleteDate: new Date(),
+                lastLoginTime: driver.lastLoginTime ? driver.lastLogintime : null
+            })
+            await newSchema.save();
             await Drivers.deleteOne({
                 _id: user_id
+            });
+            return res.status(200).json({
+                message: 'success'
+            })
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static deleteDriverAccById = async (req, res, next) => {
+        try {
+            const {driver_id} = req.body;
+            await Drivers.deleteOne({
+                _id: driver_id
             });
             return res.status(200).json({
                 message: 'success'
@@ -327,3 +388,5 @@ class DriversController {
 }
 
 export default DriversController;
+
+

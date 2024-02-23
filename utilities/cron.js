@@ -7,7 +7,6 @@ import {DateTime} from "luxon";
 import {getDispetcherById} from "../api/getDispetcherById";
 
 const urgentOrders = io.connect('http://localhost:3001/order/urgent');
-
 const asyncSearchFunction = async () => {
     try {
         const nowMoscow = DateTime.local().setZone('Europe/Moscow');
@@ -25,7 +24,7 @@ const asyncSearchFunction = async () => {
             );
             if (orderDate > nowMoscow && order.order_status === 'На продаже') {
                 const timeDifferenceInHours = orderDate.diff(nowMoscow).as('hours');
-                return timeDifferenceInHours <= 2;
+                return timeDifferenceInHours < 2 || JSON.parse(order.isUrgent) === true;
             }
             return false;
         };
@@ -42,7 +41,6 @@ const asyncSearchFunction = async () => {
                 };
                 return filterOrdersByTime(order) ? order : null;
             }));
-
         if (filteredOrders.length === 0) {
             console.log('Не найдено');
             return 'Не найдено';
@@ -64,37 +62,59 @@ const asyncSearchFunction = async () => {
             });
             const urgentTokens = Array.from(urgentTokenSet);
             const regularTokens = Array.from(regularTokenSet);
-            const sendUrgentNotification = async () => {
-                const urgentMessage = {
-                    notification: {
-                        title: "УСПЕЙ ВЗЯТЬ!",
-                        body: "Появились срочные заказы",
-                        sound: "default"
-                    },
-                    tokens: urgentTokens
-                };
+            const sendUrgentNotification = async (tokens) => {
                 try {
-                    await admin.messaging().sendMulticast(urgentMessage);
+                    for (const token of tokens) {
+                        await admin.messaging().send({
+                            notification: {
+                                title: "УСПЕЙ ВЗЯТЬ!",
+                                body: "Появились срочные заказы",
+                            },
+                            android: {
+                                notification: {
+                                    sound: 'new_message'
+                                },
+                            },
+                            apns: {
+                                payload: {
+                                    aps: {
+                                        sound: 'new_message.mp3'
+                                    },
+                                },
+                            },
+                            token: token
+                        });
+                    }
                 } catch (error) {
                     console.error('Ошибка при отправке уведомления:', error);
-                    throw error;
                 }
             };
 
-            const sendRegularNotification = async () => {
-                const regularMessage = {
-                    notification: {
-                        title: "Новые заказы",
-                        body: "Появились новые заказы",
-                        sound: "default"
-                    },
-                    tokens: regularTokens
-                };
+            const sendRegularNotification = async (tokens) => {
                 try {
-                    await admin.messaging().sendMulticast(regularMessage);
+                    for (const token of tokens) {
+                        await admin.messaging().send({
+                            notification: {
+                                title: "Новые заказы",
+                                body: "Появились новые заказы",
+                            },
+                            android: {
+                                notification: {
+                                    sound: 'new_message'
+                                },
+                            },
+                            apns: {
+                                payload: {
+                                    aps: {
+                                        sound: 'new_message.mp3'
+                                    },
+                                },
+                            },
+                            token: token
+                        });
+                    }
                 } catch (error) {
                     console.error('Ошибка при отправке уведомления:', error);
-                    throw error;
                 }
             };
             if (urgentTokens.length > 0)
@@ -106,7 +126,6 @@ const asyncSearchFunction = async () => {
             }
             urgentOrders.emit('found', filteredOrders);
             return filteredOrders;
-
         }
     } catch (error) {
         console.error('Ошибка при поиске:', error);

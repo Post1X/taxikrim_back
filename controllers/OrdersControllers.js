@@ -25,6 +25,7 @@ class OrdersControllers {
                 fulladressstart,
                 date,
                 time,
+                isUrgent,
                 additional,
                 full_price,
                 tariffId,
@@ -37,10 +38,7 @@ class OrdersControllers {
                 phone_number
             } = req.body;
             const addString = additional.join('|');
-            console.log(isBagage,
-                isBaby,
-                isBuster,
-                isAnimal);
+            console.log(addString);
             const order = {
                 orderStart: from,
                 orderFinish: to,
@@ -50,197 +48,240 @@ class OrdersControllers {
                 orderPeeple: countPeople,
                 orderBags: isBagage,
                 orderDate: date,
-                order_buster: isBuster + "",
-                order_animals: isAnimal + "",
-                order_baby_chair: isBaby + "",
+                isUrgent: isUrgent + "",
+                orderBuster: isBuster + "",
+                orderPet: isAnimal + "",
+                orderBabyChair: isBaby + "",
                 orderTime: time,
                 additional: addString,
                 orderComment: comment,
                 orderTel: phone_number,
                 orderPrice: full_price
             };
+            if ((tariffId === "Стандарт" || tariffId === "Комфорт") && countPeople > 4)
+                return res.status(300).json({
+                    message: 'Максимум пассажиров: 4'
+                })
+            if (tariffId === "Бизнес" && countPeople > 3)
+                return res.status(300).json({
+                    message: "Максимум пассажиров: 3"
+                })
+            if (tariffId === "Минивэн" && countPeople > 6)
+                return res.status(300).json({
+                    message: "Максимум пассажиров: 8"
+                })
             const orderSocket = io.connect('http://localhost:3001/order/created');
             const urgentSocket = io.connect('http://localhost:3001/order/urgent');
             const response = await appCreateOrder(order);
-            console.log(response);
-            orderSocket.emit('created', response.order_id);
-            const nowMoscow = DateTime.local().setZone('Europe/Moscow');
-            const ordersArr = await getAllOpenOrders();
-            if (!ordersArr || !ordersArr.orders || !Array.isArray(ordersArr.orders)) {
-                console.log('Не найдено');
-                next();
-                return;
-            }
-            const filterOrdersByTime = (order) => {
-                const orderDateParts = order.order_date.split('.');
-                const orderDate = DateTime.fromFormat(
-                    `${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]} ${order.order_time}`,
-                    'yyyy-MM-dd HH:mm',
-                    {zone: 'Europe/Moscow'}
-                );
-                if (orderDate > nowMoscow && order.order_status === 'На продаже') {
-                    const timeDifferenceInHours = orderDate.diff(nowMoscow).as('hours');
-                    return timeDifferenceInHours < 2;
+            if (response.error_message !== 'Невозможно создать заказ на дату которая уже прошла') {
+                if (isUrgent === false) {
+                    console.log('dpakwopdkasopkdopaw')
+                    orderSocket.emit('created', response.order_id);
                 }
-                return false;
-            };
-            const filteredOrders = (await Promise.all(
-                ordersArr.orders
-                    .filter(order => filterOrdersByTime(order))
-                    .map(async order => {
-                        const dispatch = await getDispetcherById(order.order_dispatcher);
-                        order.order_dispatcher = {
-                            dispatcher_name: dispatch.dispetcher.dispetcher_name,
-                            dispatcher_image: dispatch.dispetcher.dispetcher_image,
-                            dispatcher_phone: dispatch.dispetcher.dispetcher_phone,
-                            dispatcher_email: dispatch.dispetcher.dispetcher_email,
-                            dispatcher_telegram: dispatch.dispetcher.dispetcher_telegram,
-                        };
-                        return filterOrdersByTime(order) ? order : null;
-                    })
-            )).filter(order => order !== null);
-            if (filteredOrders.length === 0) {
-                const users = await Fcm.find();
-                const tokenSet = new Set();
-                const urgentTokenSet = new Set();
-                const regularTokenSet = new Set();
-                users.forEach((item) => {
-                    if (item.is_driver === true && item.notification === true) {
-                        const isTariffCompatible = (driverTariff, orderTariff) => {
-                            switch (driverTariff) {
-                                case "Стандарт":
-                                    return orderTariff === "Стандарт";
-                                case "Комфорт":
-                                    return orderTariff === "Стандарт" || orderTariff === "Комфорт";
-                                case "Бизнес":
-                                    return orderTariff === "Стандарт" || orderTariff === "Комфорт" || orderTariff === "Бизнес";
-                                case "Минивэн":
-                                    return true;
-                                default:
-                                    return false;
-                            }
-                        };
-                        if (isTariffCompatible(item.user_tariff, tariffId)) {
-                            if (item.urgent === true) {
-                                urgentTokenSet.add(item.token);
-                            } else {
-                                regularTokenSet.add(item.token);
+                const nowMoscow = DateTime.local().setZone('Europe/Moscow');
+                const ordersArr = await getAllOpenOrders();
+                if (!ordersArr || !ordersArr.orders || !Array.isArray(ordersArr.orders)) {
+                    next();
+                    return;
+                }
+                const filterOrdersByTime = (order) => {
+                    const orderDateParts = order.order_date.split('.');
+                    const orderDate = DateTime.fromFormat(
+                        `${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]} ${order.order_time}`,
+                        'yyyy-MM-dd HH:mm',
+                        {zone: 'Europe/Moscow'}
+                    );
+                    if (orderDate > nowMoscow && order.order_status === 'На продаже') {
+                        const timeDifferenceInHours = orderDate.diff(nowMoscow).as('hours');
+                        return timeDifferenceInHours < 2 || JSON.parse(order.isUrgent) === true;
+                    }
+                    return false;
+                };
+                const filteredOrders = (await Promise.all(
+                    ordersArr.orders
+                        .filter(order => filterOrdersByTime(order))
+                    // .map(async order => {
+                    //     const dispatch = await getDispetcherById(order.order_dispatcher);
+                    //     order.order_dispatcher = {
+                    //         dispatcher_name: dispatch.dispetcher.dispetcher_name,
+                    //         dispatcher_image: dispatch.dispetcher.dispetcher_image,
+                    //         dispatcher_phone: dispatch.dispetcher.dispetcher_phone,
+                    //         dispatcher_email: dispatch.dispetcher.dispetcher_email,
+                    //         dispatcher_telegram: dispatch.dispetcher.dispetcher_telegram,
+                    //     };
+                    //     return filterOrdersByTime(order) ? order : null;
+                    // })
+                )).filter(order => order !== null);
+                if (filteredOrders.length === 0 && isUrgent === false) {
+                    const users = await Fcm.find();
+                    const urgentTokenSet = new Set();
+                    const regularTokenSet = new Set();
+                    users.forEach((item) => {
+                        if (item.is_driver === true && item.notification === true) {
+                            const isTariffCompatible = (driverTariff, orderTariff) => {
+                                switch (driverTariff) {
+                                    case "Стандарт":
+                                        return orderTariff === "Стандарт";
+                                    case "Комфорт":
+                                        return orderTariff === "Стандарт" || orderTariff === "Комфорт";
+                                    case "Бизнес":
+                                        return orderTariff === "Стандарт" || orderTariff === "Комфорт" || orderTariff === "Бизнес";
+                                    case "Минивэн":
+                                        return orderTariff === "Минивэн" || orderTariff === "Стандарт" || orderTariff === "Комфорт" || orderTariff === "Бизнес";
+                                    default:
+                                        return false;
+                                }
+                            };
+                            if (isTariffCompatible(item.user_tariff, tariffId)) {
+                                if (item.urgent === true) {
+                                    urgentTokenSet.add(item.token);
+                                } else {
+                                    regularTokenSet.add(item.token);
+                                }
                             }
                         }
-                    }
-                });
-                const uniqueUrgentTokens = Array.from(urgentTokenSet);
-                const uniqueRegularTokens = Array.from(regularTokenSet);
-                const sendNotification = async (tokens, message) => {
-                    try {
-                        await admin.messaging().sendMulticast({
-                            notification: {
-                                title: message.title,
-                                body: message.body
-                            },
-                            tokens: tokens
-                        });
-                    } catch (error) {
-                        console.error('Ошибка при отправке уведомления:', error);
-                    }
-                };
-                //
-                console.log(uniqueUrgentTokens);
-                console.log(uniqueRegularTokens);
-                if (uniqueUrgentTokens.length > 0) {
-                    await sendNotification(uniqueUrgentTokens, {
-                        title: "Новые заказы",
-                        body: "Появились новые заказы",
-                        sound: "default"
                     });
+                    const uniqueUrgentTokens = Array.from(urgentTokenSet);
+                    const uniqueRegularTokens = Array.from(regularTokenSet);
+                    const sendNotification = async (tokens, message) => {
+                        for (const token of tokens) {
+                            try {
+                                await admin.messaging().send({
+                                    notification: {
+                                        title: message.title,
+                                        body: message.body,
+                                    },
+                                    android: {
+                                        notification: {
+                                            sound: 'new_message.mp3',
+                                            channelId: "custom_sound_channel",
+                                        },
+                                    },
+                                    apns: {
+                                        payload: {
+                                            aps: {
+                                                sound: 'new_message.mp3'
+                                            },
+                                        },
+                                    },
+                                    token: token
+                                });
+                            } catch (error) {
+                                console.error('Ошибка при отправке уведомления:', error);
+                            }
+                        }
+                    };
+                    //
+                    if (uniqueUrgentTokens.length > 0) {
+                        await sendNotification(uniqueUrgentTokens, {
+                            title: "Новые заказы",
+                            body: "Появились новые заказы",
+                            // sound: "default"
+                        });
+                    }
+                    if (uniqueRegularTokens.length > 0) {
+                        setTimeout(() => {
+                            (async () => {
+                                await sendNotification(uniqueRegularTokens, {
+                                    title: "Новые заказы",
+                                    body: "Появились новые заказы",
+                                    // sound: "default"
+                                });
+                            })();
+                        }, 60000);
+                    }
+                    //
                 }
-
-                if (uniqueRegularTokens.length > 0) {
-                    setTimeout(() => {
-                        (async () => {
+                if (filteredOrders.length > 0 || isUrgent === true) {
+                    const users = await Fcm.find();
+                    const tokenSet = new Set();
+                    const urgentTokenSet = new Set();
+                    const regularTokenSet = new Set();
+                    users.forEach((item) => {
+                        if (item.is_driver === true && item.notification === true) {
+                            const isTariffCompatible = (driverTariff, orderTariff) => {
+                                switch (driverTariff) {
+                                    case "Стандарт":
+                                        return orderTariff === "Стандарт";
+                                    case "Комфорт":
+                                        return orderTariff === "Стандарт" || orderTariff === "Комфорт";
+                                    case "Бизнес":
+                                        return orderTariff === "Стандарт" || orderTariff === "Комфорт" || orderTariff === "Бизнес";
+                                    case "Минивэн":
+                                        return orderTariff === "Минивэн" || orderTariff === "Стандарт" || orderTariff === "Комфорт" || orderTariff === "Бизнес";
+                                    default:
+                                        return false;
+                                }
+                            };
+                            if (isTariffCompatible(item.user_tariff, tariffId)) {
+                                if (item.urgent === true) {
+                                    urgentTokenSet.add(item.token);
+                                } else {
+                                    regularTokenSet.add(item.token);
+                                }
+                            }
+                        }
+                    });
+                    const uniqueUrgentTokens = Array.from(urgentTokenSet);
+                    const uniqueRegularTokens = Array.from(regularTokenSet);
+                    const sendNotification = async (tokens, message) => {
+                        for (const token of tokens) {
+                            try {
+                                await admin.messaging().send({
+                                    notification: {
+                                        title: message.title,
+                                        body: message.body,
+                                    },
+                                    android: {
+                                        notification: {
+                                            sound: 'new_message.mp3',
+                                            channelId: "custom_sound_channel"
+                                        },
+                                    },
+                                    apns: {
+                                        payload: {
+                                            aps: {
+                                                sound: 'new_message.mp3'
+                                            },
+                                        },
+                                    },
+                                    token: token
+                                });
+                            } catch (error) {
+                                await Fcm.deleteOne({
+                                    token: token
+                                })
+                                console.error('Ошибка при отправке уведомления:', error);
+                            }
+                        }
+                    };
+                    if (uniqueUrgentTokens.length > 0) {
+                        await sendNotification(uniqueUrgentTokens, {
+                            title: "УСПЕЙ ВЗЯТЬ!",
+                            body: "Появились срочные заказы",
+                        });
+                    }
+                    if (uniqueRegularTokens.length > 0) {
+                        setTimeout(async () => {
                             await sendNotification(uniqueRegularTokens, {
                                 title: "Новые заказы",
                                 body: "Появились новые заказы",
-                                sound: "default"
                             });
-                        })();
-                    }, 60000);
-                }
-                //
-            } else {
-                console.log('Найдено');
-                const users = await Fcm.find();
-                const tokenSet = new Set();
-                const urgentTokenSet = new Set();
-                const regularTokenSet = new Set();
-                users.forEach((item) => {
-                    if (item.is_driver === true && item.notification === true) {
-                        const isTariffCompatible = (driverTariff, orderTariff) => {
-                            switch (driverTariff) {
-                                case "Стандарт":
-                                    return orderTariff === "Стандарт";
-                                case "Комфорт":
-                                    return orderTariff === "Стандарт" || orderTariff === "Комфорт";
-                                case "Бизнес":
-                                    return orderTariff === "Стандарт" || orderTariff === "Комфорт" || orderTariff === "Бизнес";
-                                case "Минивэн":
-                                    return true;
-                                default:
-                                    return false;
-                            }
-                        };
-                        if (isTariffCompatible(item.user_tariff, tariffId)) {
-                            if (item.urgent === true) {
-                                urgentTokenSet.add(item.token);
-                            } else {
-                                regularTokenSet.add(item.token);
-                            }
-                        }
+                        }, 60000);
                     }
-                });
-                const uniqueUrgentTokens = Array.from(urgentTokenSet);
-                const uniqueRegularTokens = Array.from(regularTokenSet);
-                console.log(uniqueUrgentTokens);
-                console.log(uniqueRegularTokens)
-                const sendNotification = async (tokens, message) => {
-                    try {
-                        await admin.messaging().sendMulticast({
-                            notification: {
-                                title: message.title,
-                                body: message.body
-                            },
-                            tokens: tokens
-                        });
-                    } catch (error) {
-                        console.error('Ошибка при отправке уведомления:', error);
-                    }
-                };
-                if (uniqueUrgentTokens.length > 0) {
-                    await sendNotification(uniqueUrgentTokens, {
-                        title: "УСПЕЙ ВЗЯТЬ!",
-                        body: "Появились срочные заказы",
-                        sound: "default"
+                    await urgentSocket.emit('found', filteredOrders);
+                    return res.status(200).json({
+                        message: 'success'
                     });
                 }
-                if (uniqueRegularTokens.length > 0) {
-                    setTimeout(() => {
-                        (async () => {
-                            await sendNotification(uniqueRegularTokens, {
-                                title: "УСПЕЙ ВЗЯТЬ!",
-                                body: "Появились срочные заказы",
-                                sound: "default"
-                            });
-                        })();
-                    }, 60000);
-                }
-                await urgentSocket.emit('found', filteredOrders);
                 return res.status(200).json({
                     message: 'success'
-                });
+                })
+            } else {
+                res.status(200).json({
+                    message: response.error_message
+                })
             }
-            return res.status(200).json({
-                message: 'success'
-            })
         } catch (error) {
             console.error('Ошибка при обработке заказа:', error);
             return res.status(500).json({error: 'Internal Server Error'});
@@ -269,11 +310,10 @@ class OrdersControllers {
                 const orderCreateDate = DateTime.fromFormat(order.order_create_date, 'yyyy-MM-dd HH:mm:ss', {zone: 'Europe/Moscow'});
                 const nowMoscow = DateTime.local().setZone('Europe/Moscow');
                 const minutesDifference = nowMoscow.diff(orderCreateDate).as('minutes');
-                return Math.abs(minutesDifference) < 2;
+                return Math.abs(minutesDifference) < 1;
             };
             const nowMoscow = DateTime.local().setZone('Europe/Moscow');
             const ordersArr = await getAllOpenOrders();
-
             if (!ordersArr || !ordersArr.orders || !Array.isArray(ordersArr.orders)) {
                 return res.status(200).json([]);
             }
@@ -290,7 +330,7 @@ class OrdersControllers {
                 );
                 if (orderDate > nowMoscow && order.order_status === 'На продаже') {
                     const timeDifferenceInHours = orderDate.diff(nowMoscow).as('hours');
-                    return Math.round(timeDifferenceInHours) > 2;
+                    return Math.round(timeDifferenceInHours) > 2 && JSON.parse(order.isUrgent) === false;
                 }
                 return false;
             };
@@ -309,7 +349,7 @@ class OrdersControllers {
                 ordersArr.orders.map(async order => await filterOrdersByTime(order))
             );
 
-            async function filterOrdersByDriverTariff(order, driverTariff) {
+            function filterOrdersByDriverTariff(order, driverTariff) {
                 switch (driverTariff) {
                     case "Стандарт":
                         return order.order_tarif === "Стандарт";
@@ -318,7 +358,7 @@ class OrdersControllers {
                     case "Бизнес":
                         return order.order_tarif === "Стандарт" || order.order_tarif === "Комфорт" || order.order_tarif === "Бизнес";
                     case "Минивэн":
-                        return true;
+                        return order.order_tarif === "Минивэн" || order.order_tarif === "Стандарт" || order.order_tarif === "Комфорт" || order.order_tarif === "Бизнес"
                     default:
                         return false;
                 }
@@ -378,7 +418,6 @@ class OrdersControllers {
         try {
             const {user_id} = req;
             const response = await getOrderByDriver(user_id);
-
             if (response.error_message === "У водителя еще нет заказов") {
                 return res.status(200).json([]);
             }
@@ -434,38 +473,53 @@ class OrdersControllers {
             const driver = await Drivers.findOne({
                 _id: user_id
             });
-            const commission = parseInt(order.orders[0].order_commission, 10);
-            const price = Math.round((order.orders[0].order_price * commission) / 100)
-            const balance = driver.balance;
-            console.log(order.orders[0].order_status)
-            if ((balance - price) < 0) {
-                return res.status(400).json({
-                    message: `Для того чтобы взять заказ, вам не хватает: ${-(balance - price)}₽`
-                });
-            } else {
-                if (order && order.orders[0].order_status === 'Выполняется') {
-                    return res.status(400).json({
-                        error_message: 'Заказ уже куплен!'
+            const driverOrders = await getOrderByDriver(user_id);
+            let filteredOrders;
+            if (driverOrders.error_message !== "У водителя еще нет заказов") {
+                filteredOrders = driverOrders.orders.filter(order => order.order_status === 'Выполняется');
+                if (filteredOrders.length !== 0 && filteredOrders.length >= 1) {
+                    return res.status(300).json({
+                        message: 'У вас уже есть активный заказ.'
                     })
                 }
-                const request = await driverBuyOrder(order_id, user_id);
-                if (request.error_message === 'Заказ уже куплен') {
-                    console.log('hello')
-                    return res.status(400).json({
-                        error_message: 'Заказ уже куплен!'
-                    })
-                }
-                await Drivers.updateOne({
-                    _id: user_id
-                }, {
-                    balance: (balance - price)
-                })
-                statusSocket.emit('changed', order);
-                statusSocket.once('response', (data) => {
-                    console.log('Получен ответ от сервера:', data);
-                });
-                return res.status(200).json(request);
             }
+            if (order.error_message !== `Не найден заказ с order_id = ${order_id}`) {
+                const commission = parseInt(order.orders[0].order_commission, 10);
+                const price = Math.round((order.orders[0].order_price * commission) / 100)
+                const balance = driver.balance;
+                console.log(order.orders[0].order_status)
+                if ((balance - price) < 0) {
+                    return res.status(400).json({
+                        message: `Для того чтобы взять заказ, вам не хватает: ${-(balance - price)}₽`
+                    });
+                } else {
+                    if (order && order.orders[0].order_status === 'Выполняется') {
+                        return res.status(400).json({
+                            message: 'Заказ уже куплен!'
+                        })
+                    }
+                    const request = await driverBuyOrder(order_id, user_id);
+                    if (request.error_message === 'Заказ уже куплен') {
+                        console.log('hello')
+                        return res.status(400).json({
+                            message: 'Заказ уже куплен!'
+                        })
+                    }
+                    await Drivers.updateOne({
+                        _id: user_id
+                    }, {
+                        balance: (balance - price)
+                    })
+                    statusSocket.emit('changed', order);
+                    statusSocket.once('response', (data) => {
+                        console.log('Получен ответ от сервера:', data);
+                    });
+                    return res.status(200).json(request);
+                }
+            } else
+                res.status(300).json({
+                    message: 'Заказ уже был куплен/не существует.'
+                })
         } catch (e) {
             e.status = 401;
             next(e);
@@ -477,9 +531,8 @@ class OrdersControllers {
             const {orderId} = req.query;
             const request = await driverCloseOrder(orderId);
             if (request.error_message === "Вы не можете завершить заказ который еще не начался") {
-                console.log('helloworld')
                 return res.status(400).json({
-                    error_message: "Вы не можете завершить заказ который еще не начался."
+                    message: "Вы не можете завершить заказ который еще не начался."
                 });
             }
             return res.status(200).json(request);
@@ -490,7 +543,7 @@ class OrdersControllers {
     }
     //
     static getUrgentOrders = async (req, res, next) => {
-        const {from, to, tariff, priceFrom, priceTo} = req.query;
+        const {from, to, tariff, priceFrom, priceTo, dateFrom, dateTo} = req.query;
         const {user_id} = req;
         try {
             const driver = await Drivers.findOne({
@@ -501,27 +554,10 @@ class OrdersControllers {
                 const orderCreateDate = DateTime.fromFormat(order.order_create_date, 'yyyy-MM-dd HH:mm:ss', {zone: 'Europe/Moscow'});
                 const nowMoscow = DateTime.local().setZone('Europe/Moscow');
                 const minutesDifference = nowMoscow.diff(orderCreateDate).as('minutes');
-                return Math.abs(minutesDifference) <= 2;
+                return Math.abs(minutesDifference) < 1;
             };
-
-            async function filterOrdersByDriverTariff(order, driverTariff) {
-                switch (driverTariff) {
-                    case "Стандарт":
-                        return order.order_tarif === "Стандарт";
-                    case "Комфорт":
-                        return order.order_tarif === "Стандарт" || order.order_tarif === "Комфорт";
-                    case "Бизнес":
-                        return order.order_tarif === "Стандарт" || order.order_tarif === "Комфорт" || order.order_tarif === "Бизнес";
-                    case "Минивэн":
-                        return true;
-                    default:
-                        return false;
-                }
-            }
-
             const nowMoscow = DateTime.local().setZone('Europe/Moscow');
             const ordersArr = await getAllOpenOrders();
-
             if (!ordersArr || !ordersArr.orders || !Array.isArray(ordersArr.orders)) {
                 return res.status(200).json([]);
             }
@@ -529,7 +565,7 @@ class OrdersControllers {
                 _id: user_id
             });
             const isSubbed = user.subToUrgent;
-            const filterOrdersByTime = (order) => {
+            const filterOrdersByTime = async (order) => {
                 const orderDateParts = order.order_date.split('.');
                 const orderDate = DateTime.fromFormat(
                     `${orderDateParts[2]}-${orderDateParts[1]}-${orderDateParts[0]} ${order.order_time}`,
@@ -538,14 +574,12 @@ class OrdersControllers {
                 );
                 if (orderDate > nowMoscow && order.order_status === 'На продаже') {
                     const timeDifferenceInHours = orderDate.diff(nowMoscow).as('hours');
-                    return timeDifferenceInHours < 2;
+                    return Math.round(timeDifferenceInHours) < 2 || JSON.parse(order.isUrgent) === true;
                 }
-
                 return false;
             };
             const filterOrdersByPrice = (order) => {
                 const numericPrice = parseFloat(order.order_price);
-
                 if (priceFrom && priceTo) {
                     return numericPrice >= parseFloat(priceFrom) && numericPrice <= parseFloat(priceTo);
                 } else if (priceFrom) {
@@ -558,6 +592,22 @@ class OrdersControllers {
             const timeFilterResults = await Promise.all(
                 ordersArr.orders.map(async order => await filterOrdersByTime(order))
             );
+
+            function filterOrdersByDriverTariff(order, driverTariff) {
+                switch (driverTariff) {
+                    case "Стандарт":
+                        return order.order_tarif === "Стандарт";
+                    case "Комфорт":
+                        return order.order_tarif === "Стандарт" || order.order_tarif === "Комфорт";
+                    case "Бизнес":
+                        return order.order_tarif === "Стандарт" || order.order_tarif === "Комфорт" || order.order_tarif === "Бизнес";
+                    case "Минивэн":
+                        return order.order_tarif === "Минивэн" || order.order_tarif === "Стандарт" || order.order_tarif === "Комфорт" || order.order_tarif === "Бизнес"
+                    default:
+                        return false;
+                }
+            }
+
             const filteredOrders = await Promise.all(
                 ordersArr.orders
                     .filter((order, index) => timeFilterResults[index])
@@ -565,9 +615,23 @@ class OrdersControllers {
                     .filter(order => !to || order.order_end === to)
                     .filter(order => !tariff || order.order_tarif === tariff)
                     .filter(order => filterOrdersByPrice(order))
-                    .filter(order => isSubbed ? true : isNewOrder(order) === false)
-                    .filter(order => tariff === order.order_tarif ? order : null)
+                    .filter(order => {
+                        const orderCreateDate = DateTime.fromFormat(order.order_create_date.split(' ')[0], 'yyyy-MM-dd', {zone: 'Europe/Moscow'});
+                        if (dateFrom && !dateTo) {
+                            const dateFromDT = DateTime.fromISO(dateFrom, {zone: 'Europe/Moscow'});
+                            return orderCreateDate >= dateFromDT.startOf('day');
+                        } else if (!dateFrom && dateTo) {
+                            const dateToDT = DateTime.fromISO(dateTo, {zone: 'Europe/Moscow'});
+                            return orderCreateDate <= dateToDT.endOf('day');
+                        } else if (dateFrom && dateTo) {
+                            const dateFromDT = DateTime.fromISO(dateFrom, {zone: 'Europe/Moscow'});
+                            const dateToDT = DateTime.fromISO(dateTo, {zone: 'Europe/Moscow'});
+                            return orderCreateDate >= dateFromDT.startOf('day') && orderCreateDate <= dateToDT.endOf('day');
+                        }
+                        return true;
+                    })
                     .filter(order => filterOrdersByDriverTariff(order, tariffId))
+                    .filter(order => isSubbed ? true : isNewOrder(order) === false)
                     .map(async (order) => {
                         const dispatch = await getDispetcherById(order.order_dispatcher);
                         if (dispatch && dispatch.dispetcher) {
@@ -582,6 +646,7 @@ class OrdersControllers {
                         return order;
                     })
             );
+            console.log(filteredOrders);
             const response = {
                 orders: filteredOrders.filter(Boolean) || [],
                 count_orders: filteredOrders.filter(Boolean).length,

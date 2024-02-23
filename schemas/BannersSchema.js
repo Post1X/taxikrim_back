@@ -11,6 +11,9 @@ const BannersSchema = new Schema({
     },
     description: {
         type: Schema.Types.String
+    },
+    isActive: {
+        type: Schema.Types.Boolean
     }
 })
 

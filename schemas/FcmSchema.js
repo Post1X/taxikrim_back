@@ -24,6 +24,9 @@ const FcmSchema = new Schema({
     },
     notification: {
         type: Schema.Types.Boolean
+    },
+    creationDate: {
+        type: Schema.Types.Date
     }
 })
 

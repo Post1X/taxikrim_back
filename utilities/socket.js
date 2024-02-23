@@ -42,22 +42,33 @@ const socketLogic = (server, io) => {
         }
     });
     urgentOrders.on('connection', (socket) => {
-        socket.on('found', async (data) => {
-            let bigArr = [];
-            socket.broadcast.emit('send-vip', {data});
-            setTimeout(async () => {
-                await Promise.all(data.map(async (item) => {
-                    const order = await getOrderById(item.order_id);
-                    if (order.orders[0].order_status === 'На продаже') {
-                        const orderWithDispatcher = {...order.orders[0]};
-                        const dispatcher = await getDispetcherById(order.orders[0].order_dispatcher);
-                        orderWithDispatcher.order_dispatcher = dispatcher.dispetcher;
-                        bigArr.push(orderWithDispatcher);
-                    }
-                }));
-                socket.broadcast.emit('send', {bigArr});
-            }, (time * 60) * 1000);
-        });
+        try {
+            socket.on('found', async (data) => {
+                let bigArr = [];
+                socket.broadcast.emit('send-vip', {data});
+                setTimeout(async () => {
+                    await Promise.all(data.map(async (item) => {
+                        console.log(item);
+                        const order = await getOrderById(item.order_id);
+                        try {
+                            if (order.orders[0].order_status === 'На продаже') {
+                                const orderWithDispatcher = {...order.orders[0]};
+                                const dispatcher = await getDispetcherById(order.orders[0].order_dispatcher);
+                                orderWithDispatcher.order_dispatcher = dispatcher.dispetcher;
+                                bigArr.push(orderWithDispatcher);
+                            }
+                        } catch (e) {
+                            e.status = 401;
+                            console.error(e);
+                        }
+                    }));
+                    socket.broadcast.emit('send', {bigArr});
+                }, (time * 60) * 1000);
+            });
+        } catch (e) {
+            e.status = 401;
+            console.error(e);
+        }
     });
 };
 

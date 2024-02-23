@@ -19,7 +19,7 @@ class MessagingController {
                     title: title,
                     body: body
                 },
-                tokens: uniqueTokens
+                tokens: ["cbUHZAbspUegiHkjNgo98i:APA91bEu_IKw4Vsyrvkh6jj0kw4h_l9TuqyzaPSH_AghK_zuvZXjhlpZXs2oGT06mD4RtlHSW00cAClzWwqfpMT27ybCkQZ0fdpBLEuPvhI01bWOy_uj6Zqd8DSkJlPvJwlzB3S3SekQ"]
             };
             admin.messaging()
                 .sendMulticast(message)
@@ -46,6 +46,7 @@ class MessagingController {
             const tariff = driver.tariffId;
             const notification = driver.notification;
             const {is_driver, token, is_vip, device_id} = req.body;
+            console.log(token);
             const tokenToCheck = await Fcm.findOne({
                 user_id: user_id,
                 device_id: device_id
@@ -62,7 +63,8 @@ class MessagingController {
                     user_tariff: tariff
                 }, {
                     urgent: is_vip,
-                    token: token
+                    token: token,
+                    creationDate: new Date()
                 })
                 return res.status(200).json({
                     message: 'success'
@@ -76,12 +78,45 @@ class MessagingController {
                     urgent: is_vip,
                     device_id: device_id,
                     notification: notification,
-                    user_tariff: tariff
+                    user_tariff: tariff,
+                    creationDate: new Date()
                 });
                 await newToken.save().then(res.status(200).json({
                     message: 'success'
                 }));
             }
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static untieFcm = async (req, res, next) => {
+        try {
+            const {device_id} = req.body;
+            const {user_id} = req;
+            await Fcm.deleteOne({
+                device_id: device_id,
+                user_id: user_id
+            });
+            res.status(200).json({
+                message: 'success'
+            })
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static deleteFcm = async (req, res, next) => {
+        try {
+            const {token} = req.body;
+            await Fcm.deleteOne({
+                token: token
+            });
+            res.status(200).json({
+                message: 'success'
+            })
         } catch (e) {
             e.status = 401;
             next(e);

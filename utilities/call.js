@@ -6,9 +6,9 @@ export default async function makeCall(phoneNumber, code) {
         console.log(code)
         const postData = JSON.stringify({
             'recipient': phoneNumber,
-            'type': 'flashcall',
+            'type': 'sms',
             'payload': {
-                'sender': 'Такси Крым',
+                'sender': 'B-Media',
                 'text': code
             }
         });

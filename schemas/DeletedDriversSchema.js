@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const Schema = mongoose.Schema;
 
-const DriversSchema = new Schema({
+const DeletedDriversSchema = new Schema({
     avatar: {
         type: Schema.Types.String
     },
@@ -88,11 +88,14 @@ const DriversSchema = new Schema({
     popup: {
         type: Schema.Types.Boolean
     },
+    deleteDate: {
+        type: Schema.Types.Date
+    },
     lastLoginTime: {
         type: Schema.Types.Date
     }
 })
 
-const Drivers = mongoose.model('Drivers', DriversSchema)
+const DeletedDrivers = mongoose.model('DeletedDrivers', DeletedDriversSchema)
 
-export default Drivers;
+export default DeletedDrivers;

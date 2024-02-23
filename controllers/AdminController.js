@@ -1,4 +1,7 @@
 import Drivers from "../schemas/DriversSchema";
+import admin from "firebase-admin";
+import Fcm from "../schemas/FcmSchema";
+import DeletedDrivers from "../schemas/DeletedDriversSchema";
 
 class AdminController {
     static approveDriver = async (req, res, next) => {
@@ -54,10 +57,13 @@ class AdminController {
     //
     static getAllDrivers = async (req, res, next) => {
         try {
+            let arr = [];
             const drivers = await Drivers.find({
                 regComplete: 'complete'
             });
-            res.status(200).json(drivers);
+            const deletedDrivers = await DeletedDrivers.find({});
+            arr.push(...drivers, ...deletedDrivers)
+            res.status(200).json(arr);
         } catch (e) {
             e.status = 401;
             next(e);
@@ -77,6 +83,114 @@ class AdminController {
             res.status(200).json({
                 message: 'success'
             })
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static sendMessageToToken = async (req, res, next) => {
+        try {
+            const users = await Fcm.find();
+            let regularTokenSet = new Set();
+            users.forEach((item) => {
+                if (item.is_driver === true) {
+                    if (item.notification === true)
+                        regularTokenSet.add(item.token);
+                }
+            });
+            const regularTokens = Array.from(regularTokenSet);
+            const {fcm_token} = req.body;
+            if (fcm_token) {
+                console.log('HAHAHAHAHAHAHAHHA')
+                const sendNotification = async () => {
+                    try {
+                        await admin.messaging().send({
+                            notification: {
+                                title: "Тест",
+                                body: "Тест",
+                            },
+                            android: {
+                                notification: {
+                                    sound: 'new_message.mp3',
+                                    channelId: "custom_sound_channel",
+                                },
+                            },
+                            apns: {
+                                payload: {
+                                    aps: {
+                                        sound: 'new_message.mp3'
+                                    },
+                                },
+                            },
+                            token: fcm_token
+                        });
+                    } catch (error) {
+                        console.error('Ошибка при отправке уведомления:', error);
+                    }
+                };
+                await sendNotification();
+                return res.status(200).json({
+                    message: 'success'
+                })
+            } else {
+                console.log('flaopwkdopaskdopkawop')
+                const sendNotification = async (tokens, message) => {
+                    for (const token of tokens) {
+                        try {
+                            await admin.messaging().send({
+                                notification: {
+                                    title: message.title,
+                                    body: message.body,
+                                },
+                                android: {
+                                    notification: {
+                                        sound: 'new_message.mp3',
+                                        channelId: "custom_sound_channel",
+                                    },
+                                },
+                                apns: {
+                                    payload: {
+                                        aps: {
+                                            sound: 'new_message.mp3'
+                                        },
+                                    },
+                                },
+                                token: token
+                            });
+                        } catch (error) {
+                            console.error('Ошибка при отправке уведомления:', error);
+                        }
+                    }
+                };
+                await sendNotification(regularTokens, {
+                    title: "Тест",
+                    body: "Тест",
+                });
+                res.status(200).json({
+                    message: 'success'
+                })
+            }
+            res.status(200).json({
+                message: 'success'
+            })
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static changeBalance = async (req, res, next) => {
+        try {
+            const {price, user_id} = req.body;
+            await Drivers.updateOne({
+                _id: user_id
+            }, {
+                balance: price
+            });
+            res.status(200).json({
+                message: 'success'
+            });
         } catch (e) {
             e.status = 401;
             next(e);

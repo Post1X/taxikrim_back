@@ -91,13 +91,17 @@ class SubscriptionsController {
                 _id: user_id
             }, {
                 subToUrgent: true,
-                subToUrgentDate: futureDate
+                subToUrgentDate: futureDate,
+                notification: true,
+                popup: true,
+                sound_signal: true
             });
             await Fcm.updateOne({
                 user_id: user_id,
-                is_driver: true
+                is_driver: true,
             }, {
-                urgent: true
+                urgent: true,
+                notification: true
             });
             const subInfo = await Subscriptions.findOne();
             const newTransaction = new Transactions({

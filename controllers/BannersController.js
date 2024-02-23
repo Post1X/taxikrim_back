@@ -68,6 +68,33 @@ class BannersController {
             next(e);
         }
     }
+    //
+    static makeActive = async (req, res, next) => {
+        try {
+            const {banner_id} = req.query;
+            await Banners.updateMany({}, {isActive: false});
+            await Banners.updateOne({_id: banner_id}, {isActive: true});
+            res.status(200).json({
+                message: 'success'
+            });
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+
+    //
+    static getActive = async (req, res, next) => {
+        try {
+            const banner = await Banners.findOne({
+                isActive: true
+            });
+            res.status(200).json(banner);
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
 }
 
 
