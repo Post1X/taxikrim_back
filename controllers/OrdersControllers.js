@@ -155,6 +155,7 @@ class OrdersControllers {
                                         notification: {
                                             sound: 'new_message.mp3',
                                             channelId: "custom_sound_channel",
+                                            priority: "high",
                                         },
                                     },
                                     apns: {
@@ -163,11 +164,14 @@ class OrdersControllers {
                                                 sound: 'new_message.mp3'
                                             },
                                         },
+                                        headers: {
+                                            "apns-priority": "10"
+                                        },
                                     },
                                     token: token
                                 });
                             } catch (error) {
-                                console.error('Ошибка при отправке уведомления:', error);
+                                console.error('Error sending notification:', error);
                             }
                         }
                     };
@@ -235,7 +239,8 @@ class OrdersControllers {
                                     android: {
                                         notification: {
                                             sound: 'new_message.mp3',
-                                            channelId: "custom_sound_channel"
+                                            channelId: "custom_sound_channel",
+                                            priority: "high",
                                         },
                                     },
                                     apns: {
@@ -244,14 +249,14 @@ class OrdersControllers {
                                                 sound: 'new_message.mp3'
                                             },
                                         },
+                                        headers: {
+                                            "apns-priority": "10"
+                                        },
                                     },
                                     token: token
                                 });
                             } catch (error) {
-                                await Fcm.deleteOne({
-                                    token: token
-                                })
-                                console.error('Ошибка при отправке уведомления:', error);
+                                console.error('Error sending notification:', error);
                             }
                         }
                     };
@@ -486,7 +491,7 @@ class OrdersControllers {
             if (order.error_message !== `Не найден заказ с order_id = ${order_id}`) {
                 const commission = parseInt(order.orders[0].order_commission, 10);
                 const price = Math.round((order.orders[0].order_price * commission) / 100)
-                const balance = driver.balance;
+                const balance = parseInt(driver.balance);
                 console.log(order.orders[0].order_status)
                 if ((balance - price) < 0) {
                     return res.status(400).json({

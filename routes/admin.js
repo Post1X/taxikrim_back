@@ -6,6 +6,7 @@ const router = express.Router();
 
 router.post('/approve', AdminController.approveDriver);
 router.get('/users', AdminController.getVerifying);
+router.get('/drivers/deleted', AdminController.getDeletedDrivers)
 router.post('/balance', AdminController.changeBalance);
 router.post('/message', AdminController.sendMessageToToken);
 router.get('/drivers/all', AdminController.getAllDrivers);

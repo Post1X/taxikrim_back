@@ -6,9 +6,9 @@ export default async function makeCall(phoneNumber, code) {
         console.log(code)
         const postData = JSON.stringify({
             'recipient': phoneNumber,
-            'type': 'sms',
+            'type': 'flashcall',
             'payload': {
-                'sender': 'B-Media',
+                'sender': '74956665610',
                 'text': code
             }
         });
@@ -19,7 +19,7 @@ export default async function makeCall(phoneNumber, code) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': '1e5de1c0ae54c33d35f7ea0b81f0a16111c1d79e6c9b2d45c76493d82e092198'
+                'Authorization': 'c925a695ed921c13590bb2e18c691fbf98d43b04a3a9a5f97581b9b8c2e0c6e9'
             }
         };
         const req = https.request(options, (res) => {

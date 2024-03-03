@@ -42,9 +42,10 @@ class AdminController {
     //
     static getVerifying = async (req, res, next) => {
         try {
-            const drivers = await Drivers.find({
-                regComplete: "verifying"
-            });
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const skip = (page - 1) * limit;
+            const drivers = await Drivers.find({regComplete: "verifying"}).skip(skip).limit(limit);
             if (drivers.length > 0)
                 return res.status(200).json(drivers);
             else
@@ -54,21 +55,22 @@ class AdminController {
             next(e);
         }
     }
+
     //
     static getAllDrivers = async (req, res, next) => {
         try {
-            let arr = [];
-            const drivers = await Drivers.find({
-                regComplete: 'complete'
-            });
-            const deletedDrivers = await DeletedDrivers.find({});
-            arr.push(...drivers, ...deletedDrivers)
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const skip = (page - 1) * limit;
+            const drivers = await Drivers.find({regComplete: 'complete'}).skip(skip).limit(limit);
+            const arr = [...drivers];
             res.status(200).json(arr);
         } catch (e) {
             e.status = 401;
             next(e);
         }
     }
+
     //
     static banDriver = async (req, res, next) => {
         try {
@@ -191,6 +193,19 @@ class AdminController {
             res.status(200).json({
                 message: 'success'
             });
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static getDeletedDrivers = async (req, res, next) => {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const skip = (page - 1) * limit;
+            const deletedDrivers = await DeletedDrivers.find({}).skip(skip).limit(limit);
+            res.status(200).json(deletedDrivers);
         } catch (e) {
             e.status = 401;
             next(e);
