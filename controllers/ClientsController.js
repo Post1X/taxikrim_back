@@ -6,6 +6,8 @@ class ClientsController {
     static RegisterNumber = async (req, res, next) => {
         try {
             const {phone_number} = req.body;
+            console.log('aksdoijawoijdoiasjdoiawjoidja')
+            console.log(phone_number)
             const client = await Clients.findOne({
                 phone_number: phone_number
             });
@@ -20,7 +22,6 @@ class ClientsController {
                 return result;
             }
 
-            console.log(client);
             const code = generateRandomNumberString();
             await makeCall(phone_number, code)
             if (!client) {

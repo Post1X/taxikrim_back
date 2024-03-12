@@ -3,20 +3,20 @@ import mongoose from 'mongoose';
 const Schema = mongoose.Schema;
 
 const PaymentsSchema = new Schema({
-    seller_id: {
+    driver_id: {
         type: Schema.Types.ObjectId
     },
-    forSub: {
-        type: Schema.Types.Boolean
+    order_id: {
+        type: Schema.Types.String
     },
-    forMonth: {
-        type: Schema.Types.Boolean
+    amount: {
+        type: Schema.Types.Number
     },
-    forYear: {
-        type: Schema.Types.Boolean
+    type: {
+        type: Schema.Types.String
     },
-    isDispatch: {
-       type: Schema.Types.Boolean
+    isNew: {
+        type: Schema.Types.Boolean
     }
 })
 

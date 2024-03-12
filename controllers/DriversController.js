@@ -5,12 +5,17 @@ import {getDispetcherById} from "../api/getDispetcherById";
 import Fcm from "../schemas/FcmSchema";
 import DeletedDrivers from "../schemas/DeletedDriversSchema";
 import makeCall from "../utilities/call";
+import Payments from "../schemas/PaymentsSchema";
+import {checkStatus} from "../services/payment";
+import Subscriptions from "../schemas/SubscribitionsSchema";
+import Transactions from "../schemas/TransactionsSchema";
 
 class DriversController {
     static makeCall = async (req, res, next) => {
         try {
             const JWT_SECRET = process.env.JWT_SECRET;
             const {phone, password, prod} = req.body;
+            console.log(phone)
             const client = await Drivers.findOne({
                 phone: phone
             });
@@ -25,9 +30,10 @@ class DriversController {
                 const token = jwt.sign({
                     isAdmin: true
                 }, JWT_SECRET);
-                res.status(200).json({
+                return res.status(200).json({
                     token,
-                    isAdmin: true
+                    isAdmin: true,
+                    isReg: true
                 })
             }
 
@@ -61,13 +67,12 @@ class DriversController {
                     code: code
                 })
             }
-            if (JSON.parse(prod) === false)
-            {
+            if (JSON.parse(prod) === false) {
                 return res.status(200).json({
                     success: true,
                     code: code
                 });
-            }else
+            } else
                 return res.status(200).json({
                     success: true
                 })
@@ -258,6 +263,105 @@ class DriversController {
                 userdata = await Drivers.findById({
                     _id: user_id
                 });
+            const transactions = await Payments.find({
+                driver_id: user_id
+            });
+            await Promise.all(transactions.map(async (item) => {
+                try {
+                    if (item.type === 'balance') {
+                        const response = await checkStatus(item.order_id);
+                        if (response.Payments[0].Status === 'CONFIRMED') {
+                            await Drivers.updateOne({
+                                _id: user_id
+                            }, {
+                                $inc: {balance: item.amount}
+                            })
+                            await Payments.deleteMany({
+                                driver_id: user_id,
+                                type: 'balance'
+                            })
+                        }
+                    }
+                    if (item.type === 'subscribe') {
+                        const response = await checkStatus(item.order_id);
+                        if (response.Payments[0].Status === 'CONFIRMED') {
+                            let driver = await Drivers.findById(user_id);
+                            let futureDate;
+                            if (driver.subscription_until) {
+                                futureDate = new Date(driver.subscription_until);
+                                futureDate.setMonth(futureDate.getMonth() + 1);
+                            } else {
+                                const currentDate = new Date();
+                                futureDate = new Date(currentDate);
+                                futureDate.setMonth(currentDate.getMonth() + 1);
+                            }
+                            await Drivers.updateOne({
+                                _id: user_id
+                            }, {
+                                subscription_status: true,
+                                subscription_until: futureDate
+                            });
+                            const subInfo = await Subscriptions.findOne();
+                            const newTransaction = new Transactions({
+                                type: 'regular',
+                                driverId: user_id,
+                                date: new Date(),
+                                price: subInfo.driver_price
+                            });
+                            await newTransaction.save();
+                            await Payments.deleteMany({
+                                driver_id: user_id,
+                                type: 'subscribe'
+                            })
+                        }
+                    }
+                    if (item.type === 'urgent') {
+                        const response = await checkStatus(item.order_id);
+                        if (response.Payments[0].Status === 'CONFIRMED') {
+                            let driver = await Drivers.findById(user_id);
+                            let futureDate;
+
+                            if (driver.subToUrgentDate) {
+                                futureDate = new Date(driver.subToUrgentDate);
+                                futureDate.setMonth(futureDate.getMonth() + 1);
+                            } else {
+                                const currentDate = new Date();
+                                futureDate = new Date(currentDate);
+                                futureDate.setMonth(currentDate.getMonth() + 1);
+                            }
+
+                            await Drivers.updateOne({
+                                _id: user_id
+                            }, {
+                                subToUrgent: true,
+                                subToUrgentDate: futureDate,
+                                notification: true,
+                                popup: true,
+                                sound_signal: true
+                            });
+                            await Fcm.updateOne({
+                                user_id: user_id,
+                                is_driver: true,
+                            }, {
+                                urgent: true,
+                                notification: true
+                            });
+
+                            const subInfo = await Subscriptions.findOne();
+                            const newTransaction = new Transactions({
+                                type: 'urgent',
+                                driverId: user_id,
+                                date: new Date(),
+                                price: subInfo.urgent_price
+                            });
+                            await newTransaction.save();
+                        }
+                    }
+                } catch (e) {
+                    e.status = 401;
+                    next(e);
+                }
+            }))
             let admin;
             if (isAdmin === true)
                 admin = true
@@ -379,6 +483,7 @@ class DriversController {
     static deleteDriverAccById = async (req, res, next) => {
         try {
             const {driver_id} = req.body;
+            console.log(driver_id);
             const driver = await Drivers.findOne({
                 _id: driver_id
             });

@@ -1,5 +1,5 @@
 import Drivers from "../schemas/DriversSchema";
-import {getPaymentUrl} from "../services/payment";
+import {checkStatus, getPaymentUrl} from "../services/payment";
 import TransactionsSchema from "../schemas/TransactionsSchema";
 
 class FinanceController {
@@ -54,7 +54,7 @@ class FinanceController {
         try {
             const {price} = req.body;
             const {user_id} = req;
-            const response = await getPaymentUrl(price)
+            const response = await getPaymentUrl(price, user_id)
             return res.status(200).json(response);
         } catch (e) {
             e.status = 401;
@@ -117,6 +117,16 @@ class FinanceController {
                 return acc;
             }, {});
             res.status(200).json(totalAmounts);
+        } catch (e) {
+            e.status = 401;
+            next(e);
+        }
+    }
+    //
+    static checkStatus = async (req, res, next) => {
+        try {
+            const check = await checkStatus();
+            res.status(200).json(check);
         } catch (e) {
             e.status = 401;
             next(e);

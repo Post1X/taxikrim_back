@@ -16,7 +16,10 @@ class BannersController {
     //
     static getBanners = async (req, res, next) => {
         try {
-            const banners = await Banners.find();
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const skip = (page - 1) * limit;
+            const banners = await Banners.find().skip(skip).limit(limit);
             return res.status(200).json(banners)
         } catch (e) {
             e.status = 401;
